@@ -109,7 +109,7 @@ capabilities (Drift Detection, ADR Reconstruction, Q&A) read from
 this one graph, so no capability ever reasons from a disconnected
 model of the codebase.
 
-> **Phase 1 note:** temporal versioning was deferred — see
+> **Phased note:** temporal versioning is deferred — see
 > Implementation Scope sections below for the phased schema.
 
 ## 6. Flagship Module 1 — Architecture Drift Detection (Target)
@@ -128,7 +128,8 @@ ArchitectureHealth(t) = 100 − 100 × (WeightedViolations(t) / TotalApplicableR
 `WeightedViolations(t)` = Σ(violation count × severity weight) at
 commit *t*; `TotalApplicableRules(t)` = count of rule-checks
 actually evaluable at that commit. Computed across multiple commits,
-this produces a **drift curve** over the repo's history.
+this produces a **drift curve** over the repo's history. Score is
+clamped to [0, 100].
 
 **Framing to state explicitly:** this is a project-relative
 indicator for tracking one repository's health across its own
@@ -223,9 +224,9 @@ demonstrated caching/concurrency need arises.)*
 1. **Ingestion & Parsing** — Tree-sitter, static analysis. **[Phase 1 — DONE]**
 2. **Software Knowledge Graph** — Neo4j, temporal versioning. **[Phase 1 — DONE, current-state only]**
 3. **Architecture Analysis Engine** — deterministic rules,
-   violations, drift scoring. *(Priority)* **[Phase 2 — IN PROGRESS]**
+   violations, drift scoring. *(Priority)* **[Phase 2 — DONE]**
 4. **Historical Intelligence Engine** — Git/PR mining, evidence
-   correlation, ADR synthesis. *(Priority)* **[Not started]**
+   correlation, ADR synthesis. *(Priority)* **[Phase 3 — IN PROGRESS, Git mining slice only]**
 5. **AI Reasoning & Delivery** — LangGraph orchestration (drift,
    ADR, and Q&A agents), API, dashboard with chat panel. **[Not started]**
 
@@ -268,8 +269,7 @@ this code except as explicitly directed by a later phase's scope.
 - Language support: Python only (expand later)
 - Temporal versioning: SKIPPED — current-state edges only, no
   valid_from/valid_to yet
-- Git history mining: SKIPPED — that's Module 4, a separate later
-  phase
+- Git history mining: SKIPPED — became Phase 3, see below
 
 ### Node properties (Phase 1)
 - `Module`: `{ path: str, language: str }`
@@ -309,40 +309,23 @@ Running `python main.py ./test_repo`:
 
 ---
 
-## Implementation Scope — Phase 2 (Module 3: Architecture Analysis Engine)
+## Implementation Scope — Phase 2 (Module 3: Architecture Analysis Engine) — COMPLETE
 
-**Phase 1 (parsing + knowledge graph) is complete and verified.** This
-phase builds on top of it — do not modify Phase 1 code except to extend
-test_repo/ as noted below.
+**Status: DONE and verified.** Kept here for reference — do not modify
+this code except as explicitly directed by a later phase's scope.
 
-### Phase 2 goal
-Build the deterministic rule engine and drift scoring for the CURRENT
-graph state only. Do NOT build: LLM explanation of violations,
-historical/temporal scoring across commits, ADR reconstruction, Q&A,
-or any LangGraph/agent logic yet.
-
-### Fixture extension needed
-Extend `test_repo/` with 3 new files representing a layered
-architecture:
-- `controller.py` — a function that handles a request
-- `service.py` — a function with business logic
-- `database.py` — a function that reads/writes data
-
-Structure it so:
-- `controller.py` calls `service.py` (ALLOWED — correct layered flow)
-- `service.py` calls `database.py` (ALLOWED — correct layered flow)
-- `controller.py` ALSO calls `database.py` directly, in a second
-  function (VIOLATION — deliberately included so we have a known,
-  verifiable violation to detect)
+### Fixture extension (Phase 2)
+Added `controller.py`, `service.py`, `database.py` to `test_repo/`:
+- `handle_request` → `process_order` (controller→service, allowed)
+- `process_order` → `save_record` (service→database, allowed)
+- `handle_request_direct` → `save_record` (controller→database,
+  deliberate violation)
 
 ### Layer assignment
-Since Phase 1's graph has no `layer_type` property on Module nodes
-yet, add one: each Module node gets a `layer_type` property
-(`controller` / `service` / `database` / `null` for the existing
-utils/models/app files, which aren't part of this layered fixture).
+Module nodes carry an optional `layer_type` property
+(`controller` / `service` / `database` / `null` for untagged files).
 
 ### Rule format (rules.yaml)
-A new file, `rules.yaml`, at the project root:
 ```yaml
 pattern: layered
 rules:
@@ -363,25 +346,71 @@ rules:
     severity: 0
 ```
 
-### New code (folder structure)
+### Folder structure (Phase 2)
 ```
 rules/
   rule_engine.py       # loads rules.yaml, compiles to Cypher, runs checks
-  scoring.py             # ArchitectureHealth formula
+  scoring.py             # ArchitectureHealth formula (clamped to [0,100])
 check_drift.py            # CLI entry point for Phase 2
 rules.yaml
 ```
 
-### Definition of Done (Phase 2)
-Running `python check_drift.py` should:
-1. Load `rules.yaml`
-2. For each `allowed: false` rule, run a Cypher query checking
-   whether any Module with `from_layer` has a CALLS/DEPENDS_ON path
-   to a Module with `to_layer` — report any matches as violations
-3. Print each violation found: which module/function, which rule
-   broken
-4. Compute and print:
-   `ArchitectureHealth = 100 − 100 × (WeightedViolations / TotalApplicableRules)`
-5. Expected result on the extended test_repo: exactly 1 violation
-   found (controller.py → database.py direct call), health score
-   less than 100
+### Definition of Done (Phase 2) — VERIFIED
+Running `python check_drift.py`:
+1. Loaded `rules.yaml` ✓
+2. Checked all `allowed: false` rules via Cypher against the graph ✓
+3. Found exactly 1 violation: `controller.py::handle_request_direct
+   -> database.py::save_record` (severity 3) ✓
+4. The two legitimate layered calls correctly produced NO false
+   positives ✓
+5. ArchitectureHealth computed and clamped to [0, 100] — printed as
+   0 (was -200 before the clamping fix) ✓
+
+**Bug caught and fixed during implementation:** the raw formula
+`100 - 100*(weighted_violations/total_applicable_rules)` can go
+negative or exceed 100 on small rule sets (e.g., -200 with 1 rule of
+severity 3). Fixed by clamping: `max(0, min(100, score))`.
+
+---
+
+## Implementation Scope — Phase 3 (Module 4, minimal: Git History Mining only)
+
+**Phases 1 and 2 are complete and verified.** This phase is deliberately
+minimal — a small, time-boxed slice of Module 4, not the full Historical
+Intelligence Engine.
+
+### Phase 3 goal
+Mine test_repo's own Git history using PyDriller and surface it — as
+printed output and/or basic Commit nodes in the graph. Do NOT build:
+evidence correlation scoring, ADR synthesis, any LLM call, or PR/GitHub
+API integration yet. This is a narrow proof that Git mining works,
+nothing more.
+
+### Prerequisite
+test_repo/ needs actual Git history to mine. If it isn't already a Git
+repo with multiple commits, initialize one and create a small, realistic
+commit history (e.g., one commit per file as it was added across Phases
+1-2) so there's real history to walk.
+
+### What to extract (via PyDriller)
+For each commit in test_repo's history:
+- commit hash
+- commit message
+- author name
+- timestamp
+- list of files modified
+
+### Output (Phase 3 Definition of Done)
+Running `python mine_history.py` should:
+1. Walk test_repo's full commit history via PyDriller
+2. Print each commit: hash (short), message, author, date, files changed
+3. Optionally (if time allows, not required): load each commit as a
+   `Commit` node in Neo4j with an `AUTHORED` relationship to a
+   `Developer` node, and `MODIFIED` relationships to the `Module`
+   nodes it touched
+
+### Explicitly out of scope for Phase 3
+- Evidence correlation / relevance scoring
+- ADR synthesis (LLM-based)
+- GitHub PR/API integration
+- Any LangGraph or LLM logic
