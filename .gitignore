@@ -1,0 +1,33 @@
+# Environment variables (contains real Neo4j credentials — NEVER commit this)
+.env
+
+# Python virtual environment
+venv/
+env/
+.venv/
+
+# Python bytecode/cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Claude Code local session/plan files (optional — keep out of repo)
+.claude/
+
+# Logs
+*.log
