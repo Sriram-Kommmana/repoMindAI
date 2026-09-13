@@ -16,6 +16,14 @@ PY_LANGUAGE = Language(tspython.language())
 
 _SKIP_DIRS = {".git", "venv", ".venv", "env", "__pycache__", "node_modules"}
 
+# Phase 2: layer classification for the layered-architecture fixture, by
+# filename convention. Files not listed here get layer_type=None.
+_LAYER_BY_FILENAME = {
+    "controller.py": "controller",
+    "service.py": "service",
+    "database.py": "database",
+}
+
 
 def parse_repo(repo_path: str) -> dict:
     """Parse every .py file under repo_path and resolve CALLS/IMPORTS edges.
@@ -34,7 +42,14 @@ def parse_repo(repo_path: str) -> dict:
 
     dotted_to_path = {_dotted_name(path): path for path in raw_files}
 
-    modules = [{"path": path, "language": "python"} for path in raw_files]
+    modules = [
+        {
+            "path": path,
+            "language": "python",
+            "layer_type": _LAYER_BY_FILENAME.get(os.path.basename(path)),
+        }
+        for path in raw_files
+    ]
 
     classes = [
         {"name": cls["name"], "module_path": path}

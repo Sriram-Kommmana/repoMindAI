@@ -1,0 +1,17 @@
+pattern: layered
+rules:
+  - name: no-controller-to-db
+    from_layer: controller
+    to_layer: database
+    allowed: false
+    severity: 3
+  - name: controller-to-service-allowed
+    from_layer: controller
+    to_layer: service
+    allowed: true
+    severity: 0
+  - name: service-to-db-allowed
+    from_layer: service
+    to_layer: database
+    allowed: true
+    severity: 0

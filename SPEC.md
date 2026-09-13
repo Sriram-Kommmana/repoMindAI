@@ -93,7 +93,7 @@ violations → drift scoring)           scoring → correlation)
 ```
 
 > **Note:** This is the full target architecture. See "Implementation
-> Scope — Phase 1" below for what is actually being built right now.
+> Scope" sections below for what is actually being built, phase by phase.
 
 ## 5. The Knowledge Graph — the shared foundation (Target)
 
@@ -109,8 +109,8 @@ capabilities (Drift Detection, ADR Reconstruction, Q&A) read from
 this one graph, so no capability ever reasons from a disconnected
 model of the codebase.
 
-> **Phase 1 note:** temporal versioning is deferred — see
-> Implementation Scope below for the simplified Phase 1 schema.
+> **Phase 1 note:** temporal versioning was deferred — see
+> Implementation Scope sections below for the phased schema.
 
 ## 6. Flagship Module 1 — Architecture Drift Detection (Target)
 
@@ -220,14 +220,14 @@ demonstrated caching/concurrency need arises.)*
 
 ## 11. Five Major Modules (Target System Design)
 
-1. **Ingestion & Parsing** — Tree-sitter, static analysis.
-2. **Software Knowledge Graph** — Neo4j, temporal versioning.
+1. **Ingestion & Parsing** — Tree-sitter, static analysis. **[Phase 1 — DONE]**
+2. **Software Knowledge Graph** — Neo4j, temporal versioning. **[Phase 1 — DONE, current-state only]**
 3. **Architecture Analysis Engine** — deterministic rules,
-   violations, drift scoring. *(Priority)*
+   violations, drift scoring. *(Priority)* **[Phase 2 — IN PROGRESS]**
 4. **Historical Intelligence Engine** — Git/PR mining, evidence
-   correlation, ADR synthesis. *(Priority)*
+   correlation, ADR synthesis. *(Priority)* **[Not started]**
 5. **AI Reasoning & Delivery** — LangGraph orchestration (drift,
-   ADR, and Q&A agents), API, dashboard with chat panel.
+   ADR, and Q&A agents), API, dashboard with chat panel. **[Not started]**
 
 ## 12. Evaluation Methodology (Target)
 
@@ -259,23 +259,17 @@ demonstrated caching/concurrency need arises.)*
 
 ---
 
-## Implementation Scope — Phase 1 (Module 1 + Module 2 only)
+## Implementation Scope — Phase 1 (Module 1 + Module 2) — COMPLETE
 
-**This is what we are actually building right now.** Everything
-above this section describes the full target vision — do not build
-any of it yet beyond what's scoped here.
-
-### Phase 1 goal
-Build only parsing + graph loading. Do NOT build drift detection,
-ADR reconstruction, Q&A, temporal versioning, Git history mining, or
-any LLM/agent logic yet.
+**Status: DONE and verified.** Kept here for reference — do not modify
+this code except as explicitly directed by a later phase's scope.
 
 ### Scope simplification for Phase 1
 - Language support: Python only (expand later)
-- Temporal versioning: SKIP for now — just current-state edges, no
-  valid_from/valid_to yet (add this in a later phase)
-- Git history mining: SKIP for now — that's Module 4, a separate
-  later phase
+- Temporal versioning: SKIPPED — current-state edges only, no
+  valid_from/valid_to yet
+- Git history mining: SKIPPED — that's Module 4, a separate later
+  phase
 
 ### Node properties (Phase 1)
 - `Module`: `{ path: str, language: str }`
@@ -289,7 +283,7 @@ any LLM/agent logic yet.
 - `(Function)-[:CALLS]->(Function)`
 - `(Module)-[:IMPORTS]->(Module)`
 
-### Folder structure
+### Folder structure (Phase 1)
 ```
 repomind/
   parser/
@@ -303,10 +297,91 @@ repomind/
   requirements.txt
 ```
 
-### Definition of Done (Phase 1)
-Running `python main.py ./test_repo` should:
-1. Parse all `.py` files in `test_repo`
-2. Print a summary: `"Parsed N files, found M classes, K functions"`
-3. Load all nodes/relationships into Neo4j
-4. Running `MATCH (n) RETURN count(n)` in Neo4j Browser shows the
-   correct node count matching the printed summary
+### Definition of Done (Phase 1) — VERIFIED
+Running `python main.py ./test_repo`:
+1. Parsed all `.py` files in `test_repo` ✓
+2. Printed summary: "Parsed 3 files, found 2 classes, 10 functions" ✓
+3. Loaded all nodes/relationships into Neo4j ✓
+4. `MATCH (n) RETURN count(n)` returned 15, matching the printed
+   summary (3 Module + 2 Class + 10 Function) ✓
+5. 21 relationships verified: 7 CALLS, 2 IMPORTS, 12 CONTAINS ✓
+6. Re-run confirmed idempotent (identical counts, no duplication) ✓
+
+---
+
+## Implementation Scope — Phase 2 (Module 3: Architecture Analysis Engine)
+
+**Phase 1 (parsing + knowledge graph) is complete and verified.** This
+phase builds on top of it — do not modify Phase 1 code except to extend
+test_repo/ as noted below.
+
+### Phase 2 goal
+Build the deterministic rule engine and drift scoring for the CURRENT
+graph state only. Do NOT build: LLM explanation of violations,
+historical/temporal scoring across commits, ADR reconstruction, Q&A,
+or any LangGraph/agent logic yet.
+
+### Fixture extension needed
+Extend `test_repo/` with 3 new files representing a layered
+architecture:
+- `controller.py` — a function that handles a request
+- `service.py` — a function with business logic
+- `database.py` — a function that reads/writes data
+
+Structure it so:
+- `controller.py` calls `service.py` (ALLOWED — correct layered flow)
+- `service.py` calls `database.py` (ALLOWED — correct layered flow)
+- `controller.py` ALSO calls `database.py` directly, in a second
+  function (VIOLATION — deliberately included so we have a known,
+  verifiable violation to detect)
+
+### Layer assignment
+Since Phase 1's graph has no `layer_type` property on Module nodes
+yet, add one: each Module node gets a `layer_type` property
+(`controller` / `service` / `database` / `null` for the existing
+utils/models/app files, which aren't part of this layered fixture).
+
+### Rule format (rules.yaml)
+A new file, `rules.yaml`, at the project root:
+```yaml
+pattern: layered
+rules:
+  - name: no-controller-to-db
+    from_layer: controller
+    to_layer: database
+    allowed: false
+    severity: 3
+  - name: controller-to-service-allowed
+    from_layer: controller
+    to_layer: service
+    allowed: true
+    severity: 0
+  - name: service-to-db-allowed
+    from_layer: service
+    to_layer: database
+    allowed: true
+    severity: 0
+```
+
+### New code (folder structure)
+```
+rules/
+  rule_engine.py       # loads rules.yaml, compiles to Cypher, runs checks
+  scoring.py             # ArchitectureHealth formula
+check_drift.py            # CLI entry point for Phase 2
+rules.yaml
+```
+
+### Definition of Done (Phase 2)
+Running `python check_drift.py` should:
+1. Load `rules.yaml`
+2. For each `allowed: false` rule, run a Cypher query checking
+   whether any Module with `from_layer` has a CALLS/DEPENDS_ON path
+   to a Module with `to_layer` — report any matches as violations
+3. Print each violation found: which module/function, which rule
+   broken
+4. Compute and print:
+   `ArchitectureHealth = 100 − 100 × (WeightedViolations / TotalApplicableRules)`
+5. Expected result on the extended test_repo: exactly 1 violation
+   found (controller.py → database.py direct call), health score
+   less than 100

@@ -55,7 +55,8 @@ def count_nodes() -> int:
 def _write_modules(tx, modules):
     tx.run(
         "UNWIND $rows AS row "
-        "MERGE (m:Module {path: row.path}) SET m.language = row.language",
+        "MERGE (m:Module {path: row.path}) "
+        "SET m.language = row.language, m.layer_type = row.layer_type",
         rows=modules,
     )
 
