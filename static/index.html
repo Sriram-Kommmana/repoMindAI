@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RepoMind AI</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: #222;
+    background: #fff;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  p.subtitle { color: #666; margin-top: 0; }
+  .input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+  }
+  #repo-url {
+    flex: 1;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  button {
+    padding: 0.5rem 1.25rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 4px;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+  }
+  button:disabled { background: #93b4f0; cursor: default; }
+  #loading, #error { display: none; margin: 1rem 0; }
+  #loading { color: #555; }
+  #error { color: #b91c1c; }
+  #results { display: none; }
+  section { margin: 1.5rem 0; }
+  h2 { font-size: 1.1rem; border-bottom: 1px solid #eee; padding-bottom: 0.25rem; }
+  .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .stat { background: #f5f5f5; border-radius: 6px; padding: 0.75rem 1rem; }
+  .stat .value { font-size: 1.4rem; font-weight: 600; display: block; }
+  .stat .label { font-size: 0.8rem; color: #666; }
+  #health-score { font-weight: 600; }
+  ul#violations-list { padding-left: 1.2rem; }
+  ul#violations-list li { margin-bottom: 0.4rem; font-family: monospace; font-size: 0.9rem; }
+  .no-violations { color: #15803d; }
+  #diagram-container { overflow-x: auto; border: 1px solid #eee; border-radius: 6px; padding: 1rem; }
+</style>
+</head>
+<body>
+  <h1>RepoMind AI</h1>
+  <p class="subtitle">Paste a public GitHub repo URL to analyze its structure, architecture drift, and module dependencies.</p>
+
+  <div class="input-row">
+    <input id="repo-url" type="text" placeholder="https://github.com/user/repo" />
+    <button id="submit-btn">Analyze</button>
+  </div>
+
+  <div id="loading">Cloning and analyzing repository&hellip; this can take a little while for larger repos.</div>
+  <div id="error"></div>
+
+  <div id="results">
+    <section>
+      <h2>Parse Summary</h2>
+      <div class="stats">
+        <div class="stat"><span class="value" id="stat-files">0</span><span class="label">files parsed</span></div>
+        <div class="stat"><span class="value" id="stat-classes">0</span><span class="label">classes found</span></div>
+        <div class="stat"><span class="value" id="stat-functions">0</span><span class="label">functions found</span></div>
+        <div class="stat"><span class="value" id="stat-nodes">0</span><span class="label">graph nodes loaded</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Architecture Drift</h2>
+      <p>Health score: <span id="health-score">-</span> / 100</p>
+      <div id="violations"></div>
+    </section>
+
+    <section>
+      <h2>Module Dependency Diagram</h2>
+      <div id="diagram-container"></div>
+    </section>
+  </div>
+
+<script>
+  mermaid.initialize({ startOnLoad: false });
+
+  const btn = document.getElementById('submit-btn');
+  const urlInput = document.getElementById('repo-url');
+  const loadingEl = document.getElementById('loading');
+  const errorEl = document.getElementById('error');
+  const resultsEl = document.getElementById('results');
+
+  btn.addEventListener('click', analyze);
+  urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') analyze(); });
+
+  async function analyze() {
+    const repoUrl = urlInput.value.trim();
+    if (!repoUrl) return;
+
+    btn.disabled = true;
+    errorEl.style.display = 'none';
+    resultsEl.style.display = 'none';
+    loadingEl.style.display = 'block';
+
+    try {
+      const resp = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo_url: repoUrl }),
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Analysis failed (HTTP ${resp.status})`);
+      }
+
+      const data = await resp.json();
+      await renderResults(data);
+    } catch (err) {
+      errorEl.textContent = err.message || 'Analysis failed.';
+      errorEl.style.display = 'block';
+    } finally {
+      loadingEl.style.display = 'none';
+      btn.disabled = false;
+    }
+  }
+
+  async function renderResults(data) {
+    document.getElementById('stat-files').textContent = data.files_parsed;
+    document.getElementById('stat-classes').textContent = data.classes_found;
+    document.getElementById('stat-functions').textContent = data.functions_found;
+    document.getElementById('stat-nodes').textContent = data.nodes_loaded;
+
+    document.getElementById('health-score').textContent = data.health_score;
+
+    const violationsEl = document.getElementById('violations');
+    if (!data.violations || data.violations.length === 0) {
+      violationsEl.innerHTML = '<p class="no-violations">No violations found.</p>';
+    } else {
+      const items = data.violations.map(v =>
+        `<li>[${escapeHtml(v.rule)}] severity=${v.severity}: ${escapeHtml(v.caller)} &rarr; ${escapeHtml(v.callee)}</li>`
+      ).join('');
+      violationsEl.innerHTML = `<ul id="violations-list">${items}</ul>`;
+    }
+
+    const container = document.getElementById('diagram-container');
+    container.innerHTML = '';
+    const { svg } = await mermaid.render('diagram-svg', data.mermaid_diagram);
+    container.innerHTML = svg;
+
+    resultsEl.style.display = 'block';
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+</script>
+</body>
+</html>

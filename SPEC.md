@@ -652,12 +652,14 @@ Every fix was re-verified against the repo that triggered it, and `python main.p
 
 ---
 
-## Implementation Scope — Phase 6 (JavaScript + TypeScript Support)
+## Implementation Scope — Phase 6 (JavaScript + TypeScript Support) — COMPLETE
 
-**Phases 1-4, 5a, and 5b are complete and verified.** This phase extends
-language support beyond Python, following the same proven process as
-Phase 5b: build, test against real repos, fix genuine bugs, verify no
-regression.
+**Status: DONE and verified.** Kept here for reference — do not modify
+this code except as explicitly directed by a later phase's scope.
+
+This phase extended language support beyond Python, following the same
+proven process as Phase 5b: build, test against real repos, fix genuine
+bugs, verify no regression.
 
 ### Phase 6 goal
 Add JavaScript and TypeScript parsing support so the existing pipeline
@@ -738,3 +740,110 @@ parser/
 - Speculative handling for JS/TS constructs not actually encountered
   in real test repos
 - Temporal versioning, FastAPI/dashboard work
+
+### Definition of Done (Phase 6) — VERIFIED
+
+Architecture: `parser/ast_extractor.py`'s `parse_repo` is now a thin
+dispatcher merging results from the renamed (otherwise untouched)
+Python extractor plus new `parser/js_extractor.py` and
+`parser/ts_extractor.py` — all three produce the identical
+`{modules, classes, functions, calls, imports}` shape, so
+`graph/loader.py`, `rules/`, `check_drift.py`, `export_diagram.py`,
+`main.py`, and `analyze_repo.py` needed ZERO changes.
+
+Tested against 6 real repos (4 JS + 2 TS), 1 genuine bug found and
+fixed, zero Python regressions throughout:
+
+| # | Repo | Language | Result |
+|---|---|---|---|
+| — | (hand-written smoke test) | JS | Bug found+fixed — `const { a, b } = require('./mod')` (destructured require) wasn't detected as an import; only bare `require(...)` statements were. Added `_extract_declared_requires`. |
+| 1 | render-examples/express-hello-world | JS | Clean — 1 file, 0 classes/0 functions (genuinely correct — only inline route handlers, no named functions, same "don't extract anonymous callbacks" philosophy as Python) |
+| 2 | lam0819/MicroUI | JS | Clean — real classes, 147 functions, 173 nodes; verified correct classes, IMPORTS, and CALLS |
+| 3 | zagaris/express-api | JS | Clean — 7 files, 2 functions; verified the destructured-require fix against a real directory-resolution case (`{ errorHandler } = require('./middlewares')` → resolved to `middlewares/index.js`) |
+| 4 (optional) | aakashns/simple-component-library | JS/JSX | Clean — arrow-function JSX components correctly extracted, destructured imports didn't break parsing |
+| 5 | mjgs/minimal-express-typescript | TS | Clean — same inline-handler pattern as repo 1, correctly 0 top-level named functions |
+| 6 | GeekyAnts/express-typescript | TS | Clean — decorator-heavy controller classes extracted correctly, interfaces correctly ignored, IMPORTS/CALLS semantically accurate |
+
+**Cross-language proof (Definition-of-Done requirement):** loaded a TS
+repo's graph, then ran `check_drift.py` (→ "No violations found.
+ArchitectureHealth = 100") and `export_diagram.py` (→ valid Mermaid
+with correctly sanitized TS paths) completely UNMODIFIED — proving the
+downstream pipeline is genuinely language-agnostic, not just that
+parsing works.
+
+**Regression:** `python main.py ./test_repo` was re-run after every
+single change and produced the exact original output (6 files, 2
+classes, 15 functions, 23 nodes) every time.
+
+---
+
+## Implementation Scope — Phase 7 (Minimal Web Interface for Demo)
+
+**Phases 1-4, 5a, 5b, and 6 are complete and verified.** This phase is
+a thin UI wrapper — it exposes existing, already-verified logic through
+a browser instead of the CLI. No new analysis logic, no AI.
+
+### Phase 7 goal
+Let someone paste a GitHub URL into a web page and see the full
+analysis (parse summary, drift violations, health score, dependency
+diagram) rendered visually, live — for tomorrow's demo.
+
+### Why this is fast to build
+Every piece of actual work already exists and is verified: cloning
+(`analyze_repo.py`), parsing+loading (the shared `run_pipeline`/
+dispatcher logic), drift checking (`rules/rule_engine.py` +
+`rules/scoring.py`), and diagram generation (`export_diagram.py`).
+This phase only wires those together behind one API endpoint and
+renders the result in a browser — no new analysis code.
+
+### API contract
+```
+POST /analyze
+Body: {"repo_url": "https://github.com/user/repo"}
+
+Response:
+{
+  "files_parsed": 6,
+  "classes_found": 2,
+  "functions_found": 15,
+  "nodes_loaded": 23,
+  "violations": [
+    {"rule": "no-controller-to-db", "severity": 3,
+     "caller": "controller.py::handle_request_direct",
+     "callee": "database.py::save_record"}
+  ],
+  "health_score": 0,
+  "mermaid_diagram": "flowchart TD\n    ..."
+}
+```
+
+### Page layout
+- A text input for the GitHub URL, a submit button
+- A loading indicator while the analysis runs (cloning + parsing a
+  real repo takes real time — don't leave the page blank/frozen)
+- After results arrive, render in order: parse summary (as simple
+  text/stats), violations list (or "No violations found" + the health
+  score), then the Mermaid diagram (rendered via the Mermaid.js CDN
+  script's `mermaid.render()`/`mermaid.init()`)
+- Basic, clean styling — readable, not polished. No frameworks.
+
+### Definition of Done (Phase 7)
+1. `POST /analyze` with a real GitHub URL returns the JSON contract
+   above, matching what the CLI tools already produce for the same
+   repo
+2. The HTML page successfully calls the endpoint and renders all four
+   result sections (summary, violations, health score, diagram)
+3. The rendered Mermaid diagram visually matches what
+   `export_diagram.py` produces for the same repo when run via CLI
+4. Tested end-to-end in an actual browser against at least one real
+   repo (not just test_repo) — a live demo dry run, not just an API
+   test
+5. No changes to any existing pipeline file's logic — only new
+   FastAPI route code and the new static HTML/JS file
+
+### Explicitly out of scope for Phase 7
+- Authentication, persistence beyond the existing Neo4j graph
+- Any frontend framework or build step
+- ADR Reconstruction, Repository Q&A, or any LLM/agent logic
+- Styling polish beyond basic readability
+- Multiple pages or navigation
