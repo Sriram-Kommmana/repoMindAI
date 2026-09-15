@@ -575,9 +575,12 @@ removed afterward.
 
 ---
 
-## Implementation Scope — Phase 5b (Robustness Testing Against Real Repos)
+## Implementation Scope — Phase 5b (Robustness Testing Against Real Repos) — COMPLETE
 
-**Phase 5a is complete and verified** — the URL-to-clone wrapper works,
+**Status: DONE and verified.** Kept here for reference — do not modify
+this code except as explicitly directed by a later phase's scope.
+
+Phase 5a is complete and verified — the URL-to-clone wrapper works,
 proven against one real repo (kennethreitz/samplemod: 9 files, 2 classes,
 5 functions, 16 nodes).
 
@@ -626,3 +629,112 @@ Suggested small, real, structurally-varied public Python repos:
 - Building skip-and-warn graceful degradation (that's Phase 5c)
 - Testing large/complex repos (keep testing small, single-purpose repos)
 - Any LLM/agent logic, ADR reconstruction, Q&A
+
+### Definition of Done (Phase 5b) — VERIFIED
+
+Tested against 5 real repos, 3 genuine bugs found and fixed, zero
+regressions on `test_repo` after every fix:
+
+| # | Repo | Category | Result |
+|---|---|---|---|
+| 1 | kennethreitz/samplemod | simple module (baseline) | Clean — 9 files, 2 classes, 5 functions, 16 nodes |
+| 2 | gAmadorH/flask-hello-world | Flask app | Bug found+fixed — `@app.route(...)` wrapped functions in `decorated_definition`, silently skipped. Fixed by unwrapping. Now correctly finds 1 function. |
+| 3 | takp/click-sample | CLI tool, Click decorators | Clean after the decorator fix — 7 files, 3 classes, 8 functions, 18 nodes; stacked decorators handled correctly |
+| 4 | edesig/py_relative_import | package w/ relative imports | 2 bugs found+fixed — (a) relative import stems (`..a.a`) never resolved to real module paths; (b) `from X import *` wildcard imports produced zero entries regardless of relative/absolute |
+| 5 | jjmalina/python-dataclasses-examples | dataclasses/type hints (optional) | Clean via the decorator fix — 10 files, 24 classes, 42 functions, 76 nodes |
+
+**Fixes made in `parser/ast_extractor.py`:**
+1. Unwrap `decorated_definition` nodes (via `child_by_field_name("definition")`) in both `_extract_file` and `_extract_class`, so decorated functions/classes are no longer silently skipped.
+2. Added `_resolve_relative_module`, resolving a `relative_import` node to an absolute dotted module name using the same level-counting rule as Python's own `importlib._resolve_name`.
+3. Added handling for `wildcard_import` children in `_extract_import`, so `from X import *` produces an entry allowing the module-level `IMPORTS` edge to resolve (correctly excluded from `CALLS` resolution, since there's no fixed symbol name to track).
+
+Every fix was re-verified against the repo that triggered it, and `python main.py ./test_repo` was re-run after each fix, confirming the exact original output (6 files, 2 classes, 15 functions, 23 nodes) every time. No speculative try/except or skip-and-warn behavior was added.
+
+---
+
+## Implementation Scope — Phase 6 (JavaScript + TypeScript Support)
+
+**Phases 1-4, 5a, and 5b are complete and verified.** This phase extends
+language support beyond Python, following the same proven process as
+Phase 5b: build, test against real repos, fix genuine bugs, verify no
+regression.
+
+### Phase 6 goal
+Add JavaScript and TypeScript parsing support so the existing pipeline
+(knowledge graph, drift detection, Git mining, diagram export) works
+unmodified on JS/TS repos — not just Python. Java is explicitly deferred
+to a separate, later phase.
+
+### Why the rest of the pipeline needs ZERO changes
+`graph/loader.py`, `rules/rule_engine.py`, `check_drift.py`,
+`mine_history.py`, and `export_diagram.py` all operate on the graph's
+schema (Module/Class/Function nodes, CONTAINS/CALLS/IMPORTS edges) —
+they don't know or care what source language produced that data. As
+long as the JS/TS extractor produces the SAME output shape Python's
+extractor does, nothing downstream needs to change.
+
+### Approach
+1. **File language detection**: route by extension — `.py` → existing
+   Python extractor, `.js`/`.jsx` → new JS extractor, `.ts`/`.tsx` →
+   new TS extractor.
+2. **JavaScript extractor** (new): use `tree-sitter-javascript`. Map
+   its node types to the same output shape:
+   - `function_declaration`, `arrow_function`, `function_expression` → Function
+   - `class_declaration` → Class
+   - `import_statement` / CommonJS `require(...)` calls → Imports
+   - Call expressions → Calls
+3. **Test JS against 2-3 real small JS repos** before starting TS —
+   same process as Phase 5b: run, diagnose failures/wrong counts, fix
+   root causes in the new JS extractor, re-verify, re-check Python
+   regression via `test_repo`.
+4. **TypeScript extractor** (new, after JS is verified): use
+   `tree-sitter-typescript`. Reuse JS extraction logic where grammars
+   overlap (TS is largely JS-compatible for functions/classes/calls);
+   add handling for TS-specific constructs (interfaces, type aliases,
+   decorators-with-types) only as needed based on real test failures —
+   not speculatively.
+5. **Test TS against 1-2 real small TS repos**, same fix-and-verify
+   cycle.
+6. **After every single change**, re-run `python main.py ./test_repo`
+   and confirm the Python-only baseline is unchanged (6 files, 2
+   classes, 15 functions, 23 nodes) — mandatory, not optional.
+
+### Test repos
+JS candidates (small, real, structurally simple — find via search,
+verify file count is small before running):
+1. A small vanilla JS utility library or CLI tool
+2. A minimal Express.js app (tests `require`/`module.exports` patterns)
+3. (Optional) A small React component library (tests JSX + ES module imports)
+
+TS candidates:
+1. A small TypeScript utility library
+2. A minimal TS Express/Node app (tests interfaces + typed imports)
+
+### New code (folder structure)
+```
+parser/
+  ast_extractor.py       # existing Python extractor, UNCHANGED except for the language-routing dispatch
+  js_extractor.py          # new — JavaScript extraction logic
+  ts_extractor.py           # new — TypeScript extraction logic (may import/reuse js_extractor internals)
+```
+
+### Definition of Done (Phase 6)
+- JavaScript: tested against 2-3 real repos, genuine bugs documented
+  and fixed, output shape matches what `graph/loader.py` already
+  expects (verified by successfully loading into Neo4j and querying
+  the resulting graph)
+- TypeScript: tested against 1-2 real repos, same verification
+- After ALL changes: `python main.py ./test_repo` still produces the
+  exact original Python-only output — zero regression
+- `check_drift.py` and `export_diagram.py` both run successfully
+  (unmodified) against a JS or TS repo's loaded graph, proving the
+  downstream pipeline is genuinely language-agnostic
+- A results table (same format as Phase 5b's) documenting each test
+  repo and outcome, for direct use in the report
+
+### Explicitly out of scope for Phase 6
+- Java support (separate, later phase)
+- Any LLM/agent logic
+- Speculative handling for JS/TS constructs not actually encountered
+  in real test repos
+- Temporal versioning, FastAPI/dashboard work

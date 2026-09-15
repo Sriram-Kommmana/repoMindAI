@@ -12,6 +12,8 @@ import os
 import tree_sitter_python as tspython
 from tree_sitter import Language, Parser
 
+from parser import js_extractor, ts_extractor
+
 PY_LANGUAGE = Language(tspython.language())
 
 _SKIP_DIRS = {".git", "venv", ".venv", "env", "__pycache__", "node_modules"}
@@ -26,6 +28,25 @@ _LAYER_BY_FILENAME = {
 
 
 def parse_repo(repo_path: str) -> dict:
+    """Parse every supported source file under repo_path (Python, plus
+    JavaScript/TypeScript via the language-specific extractors) and merge
+    their results into one dict with keys: modules, classes, functions,
+    calls, imports — plain lists of dicts/tuples ready for graph/loader.py
+    to write. Each language extractor produces this exact same shape
+    independently, so merging is a plain per-key concatenation.
+    """
+    results = [
+        _parse_python_repo(repo_path),
+        js_extractor.parse_repo(repo_path),
+        ts_extractor.parse_repo(repo_path),
+    ]
+    return {
+        key: [item for r in results for item in r[key]]
+        for key in ("modules", "classes", "functions", "calls", "imports")
+    }
+
+
+def _parse_python_repo(repo_path: str) -> dict:
     """Parse every .py file under repo_path and resolve CALLS/IMPORTS edges.
 
     Returns a dict with keys: modules, classes, functions, calls, imports —
