@@ -496,13 +496,14 @@ Running `python export_diagram.py`:
 
 ---
 
-## Implementation Scope — Phase 5a (URL-to-Local-Clone Wrapper)
+## Implementation Scope — Phase 5a (URL-to-Local-Clone Wrapper) — COMPLETE
 
-**Phases 1-4 are complete and verified.** Phase 5a is the FIRST of three
-planned steps toward "paste any GitHub URL, get a live analysis":
-**5a (this phase) → 5b (test against real repos, fix parsing issues) →
-5c (graceful failure handling).** Do not attempt 5b or 5c in this phase
-— keep this strictly to cloning + wiring into the existing pipeline.
+**Status: DONE and verified.** Kept here for reference — do not modify
+this code except as explicitly directed by a later phase's scope.
+
+Phase 5a is the FIRST of three planned steps toward "paste any GitHub
+URL, get a live analysis": **5a (this phase) → 5b (test against real
+repos, fix parsing issues) → 5c (graceful failure handling).**
 
 ### Phase 5a goal
 Accept a GitHub repository URL, clone it locally, and feed that local
@@ -550,16 +551,78 @@ Example: `python analyze_repo.py https://github.com/user/small-repo`
   same as today — Phase 5a only handles acquisition + parsing/loading)
 - GitHub API authentication for private repos (public repos only)
 
-### Definition of Done (Phase 5a)
-Running `python analyze_repo.py <a real small public GitHub repo URL>`
-should:
-1. Clone the repo to a temporary local directory
-2. Print clear progress messages throughout
-3. Successfully parse and load it into Neo4j using the existing
-   pipeline logic (no duplicated parsing code)
-4. Print a final summary matching `main.py`'s existing summary format
-   (files/classes/functions parsed, node count loaded)
-5. As a smoke test, this should be run against at least ONE real
-   small public repo (not just test_repo) to confirm the clone step
-   itself works end-to-end — full robustness testing across multiple
-   repos is Phase 5b, not required here
+### Definition of Done (Phase 5a) — VERIFIED
+Running `python analyze_repo.py https://github.com/kennethreitz/samplemod`:
+1. Cloned the repo to a temporary local directory ✓
+2. Printed clear progress messages throughout ✓
+3. Successfully parsed and loaded it via the existing pipeline logic
+   (refactored into a shared `run_pipeline()` function, no duplicated
+   code) — 9 files, 2 classes, 5 functions, 16 nodes ✓
+4. Printed a final summary matching `main.py`'s existing format ✓
+5. Smoke-tested against one real repo, confirming the clone step
+   works end-to-end ✓
+6. `python main.py ./test_repo` re-confirmed byte-identical output
+   after the refactor (6 files, 2 classes, 15 functions, 23 nodes) —
+   no regression ✓
+
+**Bug caught and fixed during implementation:** the initial cleanup
+(`shutil.rmtree(temp_dir, ignore_errors=True)`) silently left the
+`.git` folder behind — Windows marks some git-internal files
+read-only, and `ignore_errors=True` skips the failure rather than
+fixing it. Fixed with an `onerror` handler that clears the read-only
+bit and retries the delete; re-confirmed the temp directory is fully
+removed afterward.
+
+---
+
+## Implementation Scope — Phase 5b (Robustness Testing Against Real Repos)
+
+**Phase 5a is complete and verified** — the URL-to-clone wrapper works,
+proven against one real repo (kennethreitz/samplemod: 9 files, 2 classes,
+5 functions, 16 nodes).
+
+### Phase 5b goal
+Run analyze_repo.py against SEVERAL more small, real, public Python
+repos to find and fix actual parsing failures — not speculative ones.
+This phase is about discovering what genuinely breaks on real-world code
+that test_repo's simple fixture never exercised, then fixing each issue
+as it's found.
+
+### Explicitly different from Phase 5c
+Phase 5b fixes bugs in EXISTING parsing logic when a real construct
+causes an actual crash or incorrect result (e.g., a decorator confuses
+the extractor, a relative import isn't resolved, an f-string with nested
+expressions breaks a query). Phase 5c (separate, later) is about adding
+GRACEFUL DEGRADATION for whatever still can't be parsed after 5b — i.e.,
+skip-and-warn instead of crash, for the long tail of things not worth
+fully supporting. Don't build 5c's skip-and-warn behavior in this phase;
+if something breaks, either fix the actual parsing logic properly, or
+note it as a candidate for 5c's graceful handling — don't paper over it.
+
+### Test repos (run one at a time, fix issues as they appear before moving to the next)
+Suggested small, real, structurally-varied public Python repos:
+1. `https://github.com/kennethreitz/samplemod` — already tested in 5a, re-confirm as baseline
+2. A small Flask app (e.g., a minimal Flask starter/tutorial repo)
+3. A small CLI tool repo (argparse-based, likely has decorators)
+4. A repo using relative imports within a package (a `package/__init__.py` + submodules structure)
+5. (Optional, if time allows) A repo using type hints and dataclasses extensively
+
+### Process for each repo
+1. Run `python analyze_repo.py <url>`
+2. If it crashes or produces obviously wrong output (e.g., 0 functions found in a repo that clearly has many), diagnose why
+3. Fix the actual parsing logic in `parser/ast_extractor.py` if the fix is small and general (e.g., handling a new AST node type)
+4. Re-run the SAME repo to confirm the fix worked
+5. Document what broke and what the fix was (this is more evaluation/refinement material for the report)
+6. Move to the next repo only after the current one is clean or the issue is explicitly deferred to Phase 5c
+
+### Definition of Done (Phase 5b)
+- Ran analyze_repo.py against at least 4 different real repos (varied structure: simple module, Flask app, CLI tool with decorators, package with relative imports)
+- For each, documented: what happened, whether it worked cleanly or needed a fix, and what the fix was if any
+- At least 1-2 genuine parsing bugs found and fixed in `parser/ast_extractor.py` (if the fixture-only testing so far means real bugs are likely to surface)
+- After each fix, the ORIGINAL test_repo fixture is re-run to confirm no regression (`python main.py ./test_repo` still produces "Parsed 6 files, found 2 classes, 15 functions" / 23 nodes)
+- A short summary table of results across all tested repos, for use in the report/demo prep
+
+### Explicitly out of scope for Phase 5b
+- Building skip-and-warn graceful degradation (that's Phase 5c)
+- Testing large/complex repos (keep testing small, single-purpose repos)
+- Any LLM/agent logic, ADR reconstruction, Q&A

@@ -113,12 +113,14 @@ def _extract_file(root_node, rel_path: str) -> dict:
     raw_imports = []
 
     for node in root_node.children:
+        if node.type == "decorated_definition":
+            node = node.child_by_field_name("definition")
         if node.type == "function_definition":
             functions.append(_extract_function(node))
         elif node.type == "class_definition":
             classes.append(_extract_class(node))
         elif node.type in ("import_statement", "import_from_statement"):
-            raw_imports.extend(_extract_import(node))
+            raw_imports.extend(_extract_import(node, rel_path))
 
     return {
         "functions": functions,
@@ -146,6 +148,8 @@ def _extract_class(node) -> dict:
     methods = []
     if body_node is not None:
         for child in body_node.children:
+            if child.type == "decorated_definition":
+                child = child.child_by_field_name("definition")
             if child.type == "function_definition":
                 methods.append(_extract_function(child))
     return {"name": name_node.text.decode(), "functions": methods}
@@ -176,7 +180,34 @@ def _extract_calls(node) -> list:
     return calls
 
 
-def _extract_import(node) -> list:
+def _resolve_relative_module(node, rel_path: str) -> str | None:
+    """Resolve a `relative_import` node (e.g. `..a.a`, raw text still carrying
+    its leading dots) to an absolute dotted module name, relative to the
+    importing file's own package.
+
+    Follows the same level-counting rule as Python's importlib
+    (`_resolve_name`): each leading dot drops one trailing dotted segment
+    from the importing module's own package name. Returns None if there's
+    no dotted name to resolve against (e.g. a bare `from . import x`, or a
+    relative import that goes above the top-level package).
+    """
+    prefix_node = next((c for c in node.children if c.type == "import_prefix"), None)
+    if prefix_node is None:
+        return None
+    level = prefix_node.text.decode().count(".")
+    name_node = next((c for c in node.children if c.type == "dotted_name"), None)
+    trailing = name_node.text.decode() if name_node is not None else None
+
+    own_dotted = _dotted_name(rel_path)
+    own_package = own_dotted.rsplit(".", 1)[0] if "." in own_dotted else ""
+    base = own_package.rsplit(".", level - 1)[0]
+
+    if trailing:
+        return f"{base}.{trailing}" if base else trailing
+    return base or None
+
+
+def _extract_import(node, rel_path: str) -> list:
     """Returns a list of (module_stem, imported_name_or_None, local_alias_or_name).
 
     For `import X [as Y]`: (X, None, Y or X).
@@ -195,8 +226,13 @@ def _extract_import(node) -> list:
     elif node.type == "import_from_statement":
         module_node = node.child_by_field_name("module_name")
         if module_node is None:
-            return results  # relative import (e.g. `from . import x`) — skip
-        stem = module_node.text.decode()
+            return results  # no module name at all — not seen in practice, nothing to resolve
+        if module_node.type == "relative_import":
+            stem = _resolve_relative_module(module_node, rel_path)
+            if stem is None:
+                return results
+        else:
+            stem = module_node.text.decode()
         for child in node.children:
             if child.id == module_node.id:
                 continue
@@ -207,6 +243,10 @@ def _extract_import(node) -> list:
                 name_node = child.child_by_field_name("name")
                 alias_node = child.child_by_field_name("alias")
                 results.append((stem, name_node.text.decode(), alias_node.text.decode()))
+            elif child.type == "wildcard_import":
+                # `from X import *` — no fixed symbol to track for CALLS
+                # resolution, but the module-level IMPORTS edge still holds.
+                results.append((stem, None, None))
     return results
 
 
