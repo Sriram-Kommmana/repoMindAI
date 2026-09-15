@@ -421,11 +421,13 @@ Running `python mine_history.py`:
 
 ---
 
-## Implementation Scope — Phase 4 (Mermaid Diagram Export)
+## Implementation Scope — Phase 4 (Mermaid Diagram Export) — COMPLETE
 
-**Phases 1, 2, and 3 are complete and verified.** This is a small,
-self-contained addition — no new analysis, just formatting existing
-graph data into a visual diagram.
+**Status: DONE and verified.** Kept here for reference — do not modify
+this code except as explicitly directed by a later phase's scope.
+
+This is a small, self-contained addition — no new analysis, just
+formatting existing graph data into a visual diagram.
 
 ### Phase 4 goal
 Query the existing Neo4j graph and generate a Mermaid diagram (module
@@ -477,3 +479,87 @@ Running `python export_diagram.py` should:
 - A web-based interactive diagram viewer
 - Automatic regeneration on every pipeline run (this is a standalone,
   on-demand export script)
+
+### Definition of Done (Phase 4) — VERIFIED
+Running `python export_diagram.py`:
+1. Queried the graph for all Module nodes and IMPORTS relationships ✓
+2. Generated valid Mermaid flowchart syntax ✓
+3. Wrote it to `diagram_output.md` ✓
+4. Printed the same Mermaid code to console ✓
+5. Output matched a pre-computed expected structure exactly: 3
+   layer-styled subgraphs (controller/database/service), 3 ungrouped
+   nodes (app/models/utils), 5 edges, 3 classDef/class pairs ✓
+6. Visually confirmed rendering in a Mermaid-capable viewer — no
+   syntax errors, correct colored/framed layer boxes ✓
+7. `git status` confirmed only `export_diagram.py` and
+   `diagram_output.md` were added — no Phase 1-3 files touched ✓
+
+---
+
+## Implementation Scope — Phase 5a (URL-to-Local-Clone Wrapper)
+
+**Phases 1-4 are complete and verified.** Phase 5a is the FIRST of three
+planned steps toward "paste any GitHub URL, get a live analysis":
+**5a (this phase) → 5b (test against real repos, fix parsing issues) →
+5c (graceful failure handling).** Do not attempt 5b or 5c in this phase
+— keep this strictly to cloning + wiring into the existing pipeline.
+
+### Phase 5a goal
+Accept a GitHub repository URL, clone it locally, and feed that local
+path into the EXISTING, UNCHANGED parsing/graph-loading pipeline
+(`main.py`'s logic). No changes to `parser/`, `graph/`, `rules/`,
+`check_drift.py`, `mine_history.py`, or `export_diagram.py` — this
+phase only adds an acquisition step in front of what already works.
+
+### Why this matters for the demo
+The goal is: a panel member gives a real GitHub URL, and the full
+pipeline (parse → load → drift check → diagram export) runs against
+it live. Phase 5a is the first piece — turning a URL into a local
+folder the existing pipeline can already handle.
+
+### CLI interface
+```
+python analyze_repo.py <github_url>
+```
+Example: `python analyze_repo.py https://github.com/user/small-repo`
+
+### Approach
+1. Accept a GitHub URL as a command-line argument
+2. Clone it to a temporary local directory (e.g., using `git clone`
+   via `subprocess.run(...)`, or GitPython if simpler — either is
+   fine, prefer whichever needs fewer new dependencies)
+3. Print clear status messages as it progresses (e.g., "Cloning
+   {url}...", "Clone complete, found N Python files", "Parsing...",
+   "Loaded into Neo4j", "Done") — this will run live in front of a
+   panel, so visible progress matters more than in earlier phases
+4. Call the existing parsing + graph-loading logic (from `main.py`)
+   on the cloned local path — do not duplicate or reimplement that
+   logic, import and reuse it
+5. Handle cleanup of the temporary clone directory in a sensible way
+   (either delete it after loading into Neo4j, or leave it and print
+   its path — document whichever choice is made and why)
+
+### Explicitly out of scope for Phase 5a
+- Testing against multiple different real-world repos (that's Phase
+  5b — this phase only needs to prove cloning + pipeline wiring works
+  on ONE small real repo as a smoke test)
+- Adding error handling for parsing failures on constructs not yet
+  seen (that's Phase 5c)
+- Running `check_drift.py` or `export_diagram.py` automatically as
+  part of this script (those remain separate commands run afterward,
+  same as today — Phase 5a only handles acquisition + parsing/loading)
+- GitHub API authentication for private repos (public repos only)
+
+### Definition of Done (Phase 5a)
+Running `python analyze_repo.py <a real small public GitHub repo URL>`
+should:
+1. Clone the repo to a temporary local directory
+2. Print clear progress messages throughout
+3. Successfully parse and load it into Neo4j using the existing
+   pipeline logic (no duplicated parsing code)
+4. Print a final summary matching `main.py`'s existing summary format
+   (files/classes/functions parsed, node count loaded)
+5. As a smoke test, this should be run against at least ONE real
+   small public repo (not just test_repo) to confirm the clone step
+   itself works end-to-end — full robustness testing across multiple
+   repos is Phase 5b, not required here
