@@ -226,9 +226,9 @@ demonstrated caching/concurrency need arises.)*
 3. **Architecture Analysis Engine** — deterministic rules,
    violations, drift scoring. *(Priority)* **[Phase 2 — DONE]**
 4. **Historical Intelligence Engine** — Git/PR mining, evidence
-   correlation, ADR synthesis. *(Priority)* **[Phase 3 — IN PROGRESS, Git mining slice only]**
+   correlation, ADR synthesis. *(Priority)* **[Phase 3 — DONE (Git mining slice); evidence correlation and ADR synthesis not started]**
 5. **AI Reasoning & Delivery** — LangGraph orchestration (drift,
-   ADR, and Q&A agents), API, dashboard with chat panel. **[Not started]**
+   ADR, and Q&A agents), API, dashboard with chat panel. **[Diagram export (Phase 4) in progress; everything else not started]**
 
 ## 12. Evaluation Methodology (Target)
 
@@ -324,6 +324,8 @@ Added `controller.py`, `service.py`, `database.py` to `test_repo/`:
 ### Layer assignment
 Module nodes carry an optional `layer_type` property
 (`controller` / `service` / `database` / `null` for untagged files).
+Verified directly via `MATCH (m:Module) RETURN m.path, m.layer_type`
+in Neo4j Browser — all 6 modules correctly tagged.
 
 ### Rule format (rules.yaml)
 ```yaml
@@ -373,44 +375,105 @@ severity 3). Fixed by clamping: `max(0, min(100, score))`.
 
 ---
 
-## Implementation Scope — Phase 3 (Module 4, minimal: Git History Mining only)
+## Implementation Scope — Phase 3 (Module 4, minimal: Git History Mining only) — COMPLETE
 
-**Phases 1 and 2 are complete and verified.** This phase is deliberately
-minimal — a small, time-boxed slice of Module 4, not the full Historical
-Intelligence Engine.
+**Status: DONE and verified.** Kept here for reference.
 
-### Phase 3 goal
-Mine test_repo's own Git history using PyDriller and surface it — as
-printed output and/or basic Commit nodes in the graph. Do NOT build:
-evidence correlation scoring, ADR synthesis, any LLM call, or PR/GitHub
-API integration yet. This is a narrow proof that Git mining works,
-nothing more.
+### Decision: mined the outer repo, not a synthetic test_repo history
+test_repo/'s files are tracked as ordinary files inside the outer
+repoMindAI repo (not a nested repo). Rather than untracking them and
+creating a separate nested `.git` purely to manufacture synthetic
+fixture history, PyDriller was pointed at the outer repoMindAI repo
+itself, which already has real, meaningful commit history. This
+satisfies the actual intent (real history to walk, real fields to
+extract) more simply and avoids any structural change to a
+verified, working repo.
 
-### Prerequisite
-test_repo/ needs actual Git history to mine. If it isn't already a Git
-repo with multiple commits, initialize one and create a small, realistic
-commit history (e.g., one commit per file as it was added across Phases
-1-2) so there's real history to walk.
-
-### What to extract (via PyDriller)
-For each commit in test_repo's history:
-- commit hash
+### What was extracted (via PyDriller)
+For each commit in the outer repo's history:
+- commit hash (short form)
 - commit message
 - author name
 - timestamp
 - list of files modified
 
-### Output (Phase 3 Definition of Done)
-Running `python mine_history.py` should:
-1. Walk test_repo's full commit history via PyDriller
-2. Print each commit: hash (short), message, author, date, files changed
-3. Optionally (if time allows, not required): load each commit as a
-   `Commit` node in Neo4j with an `AUTHORED` relationship to a
-   `Developer` node, and `MODIFIED` relationships to the `Module`
-   nodes it touched
+### Folder structure (Phase 3)
+```
+mine_history.py    # CLI entry point, PyDriller-based extraction
+```
 
-### Explicitly out of scope for Phase 3
+### Definition of Done (Phase 3) — VERIFIED
+Running `python mine_history.py`:
+1. Walked the outer repo's full commit history via PyDriller ✓
+2. Printed each commit: hash, message, author, date, files changed ✓
+3. Output cross-checked against `git log --stat` — hashes (051a119,
+   ffd8f61), author, timestamps, messages, and modified files all
+   matched exactly ✓
+4. Summary line printed: "Mined 2 commits from ." ✓
+
+### Explicitly out of scope for Phase 3 (unchanged)
 - Evidence correlation / relevance scoring
 - ADR synthesis (LLM-based)
 - GitHub PR/API integration
 - Any LangGraph or LLM logic
+- Neo4j Commit/Developer node writes (optional per original scope,
+  not built — printed output only)
+
+---
+
+## Implementation Scope — Phase 4 (Mermaid Diagram Export)
+
+**Phases 1, 2, and 3 are complete and verified.** This is a small,
+self-contained addition — no new analysis, just formatting existing
+graph data into a visual diagram.
+
+### Phase 4 goal
+Query the existing Neo4j graph and generate a Mermaid diagram (module
+dependency graph) as output. Do NOT build: a web UI to display it, ADR
+reconstruction, evidence correlation, Q&A, or any LLM/agent logic.
+
+### What to generate
+A Mermaid `flowchart` showing module-level dependencies, using the
+existing `IMPORTS` relationships already in the graph:
+```
+flowchart TD
+    app[app.py] --> models[models.py]
+    app --> utils[utils.py]
+    controller[controller.py] --> service[service.py]
+    controller --> database[database.py]
+    service --> database
+```
+
+Node labels should show the module filename. If a module has a
+`layer_type` (controller/service/database), style or group those nodes
+distinctly (e.g., a Mermaid subgraph per layer) so the layered
+architecture is visually obvious — this directly supports the drift
+detection narrative.
+
+### Approach
+1. Query Neo4j: `MATCH (m1:Module)-[:IMPORTS]->(m2:Module) RETURN m1.path, m1.layer_type, m2.path, m2.layer_type`
+2. Also query all Module nodes (even ones with no IMPORTS edges) so isolated modules still appear
+3. Format the results as valid Mermaid flowchart syntax
+4. Write the output to a `.md` file (so it renders directly in any Markdown viewer that supports Mermaid, e.g. GitHub, VS Code preview) and also print it to the console
+
+### New code (folder structure)
+```
+export_diagram.py    # CLI entry point for Phase 4
+```
+
+### Definition of Done (Phase 4)
+Running `python export_diagram.py` should:
+1. Query the graph for all Module nodes and IMPORTS relationships
+2. Generate valid Mermaid flowchart syntax
+3. Write it to `diagram_output.md`
+4. Print the same Mermaid code to the console
+5. Opening `diagram_output.md` in a Mermaid-capable viewer (GitHub,
+   VS Code with Mermaid preview, or mermaid.live) should render a
+   correct, readable module dependency diagram matching the actual
+   graph structure
+
+### Explicitly out of scope for Phase 4
+- Class-level or function-level diagrams (module-level only, for now)
+- A web-based interactive diagram viewer
+- Automatic regeneration on every pipeline run (this is a standalone,
+  on-demand export script)
