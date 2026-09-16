@@ -2,56 +2,258 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RepoMind AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <style>
-  body {
-    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    max-width: 900px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-    color: #222;
-    background: #fff;
+  :root {
+    --bg: #0a0a0a;
+    --surface: #161616;
+    --surface-2: #202020;
+    --border: #f2f2f2;
+    --text: #f2f2f2;
+    --text-dim: #999999;
+    --invert-bg: #f2f2f2;
+    --invert-text: #0a0a0a;
   }
-  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-  p.subtitle { color: #666; margin-top: 0; }
+
+  * { box-sizing: border-box; }
+
+  html { background: var(--bg); }
+
+  body {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 5rem;
+    color: var(--text);
+    background: var(--bg);
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    margin: 0 0 0.5rem;
+  }
+
+  p.subtitle {
+    color: var(--text-dim);
+    margin: 0 0 2rem;
+    font-size: 0.88rem;
+    max-width: 60ch;
+  }
+
   .input-row {
     display: flex;
-    gap: 0.5rem;
-    margin: 1.5rem 0;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1.5rem 0 2.25rem;
   }
+
   #repo-url {
     flex: 1;
-    padding: 0.5rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    min-width: 220px;
+    padding: 0.9rem 1rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
+    border: 3px solid var(--border);
+    border-radius: 0;
   }
+  #repo-url::placeholder { color: var(--text-dim); }
+  #repo-url:focus { outline: none; background: var(--surface-2); }
+
   button {
-    padding: 0.5rem 1.25rem;
-    font-size: 1rem;
-    border: none;
-    border-radius: 4px;
-    background: #2563eb;
-    color: #fff;
+    padding: 0.9rem 1.6rem;
+    font-size: 0.9rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 3px solid var(--border);
+    border-radius: 0;
+    background: var(--invert-bg);
+    color: var(--invert-text);
     cursor: pointer;
+    box-shadow: 5px 5px 0 0 var(--border);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
   }
-  button:disabled { background: #93b4f0; cursor: default; }
-  #loading, #error { display: none; margin: 1rem 0; }
-  #loading { color: #555; }
-  #error { color: #b91c1c; }
+  button:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 7px 0 0 var(--border);
+  }
+  button:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--border);
+  }
+  button:disabled {
+    background: var(--surface-2);
+    color: var(--text-dim);
+    border-color: var(--text-dim);
+    box-shadow: none;
+    cursor: default;
+  }
+
+  #loading, #error {
+    display: none;
+    margin: 0 0 1.5rem;
+    padding: 1rem 1.1rem;
+    border: 3px solid var(--border);
+    font-size: 0.85rem;
+  }
+  #loading { color: var(--text); background: var(--surface); }
+  #error { color: var(--invert-text); background: var(--text); font-weight: 700; }
+
   #results { display: none; }
-  section { margin: 1.5rem 0; }
-  h2 { font-size: 1.1rem; border-bottom: 1px solid #eee; padding-bottom: 0.25rem; }
-  .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
-  .stat { background: #f5f5f5; border-radius: 6px; padding: 0.75rem 1rem; }
-  .stat .value { font-size: 1.4rem; font-weight: 600; display: block; }
-  .stat .label { font-size: 0.8rem; color: #666; }
-  #health-score { font-weight: 600; }
-  ul#violations-list { padding-left: 1.2rem; }
-  ul#violations-list li { margin-bottom: 0.4rem; font-family: monospace; font-size: 0.9rem; }
-  .no-violations { color: #15803d; }
-  #diagram-container { overflow-x: auto; border: 1px solid #eee; border-radius: 6px; padding: 1rem; }
+
+  section {
+    margin: 0 0 2rem;
+    padding: 1.5rem;
+    background: var(--surface);
+    border: 3px solid var(--border);
+    box-shadow: 6px 6px 0 0 var(--border);
+  }
+
+  h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 3px solid var(--border);
+    padding-bottom: 0.65rem;
+    margin: 0 0 1.15rem;
+  }
+
+  .stats { display: flex; gap: 0.9rem; flex-wrap: wrap; }
+  .stat {
+    background: var(--surface-2);
+    border: 2px solid var(--border);
+    padding: 0.9rem 1.15rem;
+    min-width: 108px;
+  }
+  .stat .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    display: block;
+    line-height: 1.1;
+  }
+  .stat .label {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  #health-score { font-weight: 700; font-family: 'Space Grotesk', sans-serif; font-size: 1.05em; }
+
+  ul#violations-list { list-style: none; padding: 0; margin: 0; }
+  ul#violations-list li {
+    margin-bottom: 0.6rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.82rem;
+    border: 2px solid var(--border);
+    background: var(--surface-2);
+    word-break: break-word;
+  }
+  ul#violations-list li:last-child { margin-bottom: 0; }
+
+  .no-violations {
+    display: inline-block;
+    color: var(--invert-text);
+    background: var(--text);
+    padding: 0.5rem 0.85rem;
+    font-weight: 700;
+    border: 2px solid var(--border);
+    font-size: 0.85rem;
+  }
+
+  #diagram-container {
+    overflow: auto;
+    max-height: 75vh;
+    border: 2px solid var(--border);
+    padding: 1rem;
+    background: var(--bg);
+  }
+
+  #documentation-error {
+    display: none;
+    padding: 1rem 1.1rem;
+    border: 3px solid var(--border);
+    background: var(--text);
+    color: var(--invert-text);
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  #documentation-warnings {
+    display: none;
+    padding: 1rem 1.1rem;
+    border: 2px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  #documentation-warnings ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+  #documentation-warnings li { margin-bottom: 0.3rem; }
+
+  .markdown-body { line-height: 1.65; font-size: 0.92rem; }
+  .markdown-body :first-child { margin-top: 0; }
+  .markdown-body h2 {
+    font-size: 1rem;
+    border-bottom: 2px solid var(--border);
+    margin-top: 1.85rem;
+  }
+  .markdown-body a { color: var(--text); }
+  .markdown-body code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 0.12rem 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+  }
+  .markdown-body pre {
+    background: var(--surface-2);
+    border: 2px solid var(--border);
+    padding: 0.9rem;
+    overflow-x: auto;
+  }
+  .markdown-body pre code { border: none; padding: 0; background: none; }
+  .markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: 0.85em;
+  }
+  .markdown-body th, .markdown-body td {
+    border: 2px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  .markdown-body th {
+    background: var(--surface-2);
+    font-family: 'Space Grotesk', sans-serif;
+    text-transform: uppercase;
+    font-size: 0.78em;
+    letter-spacing: 0.04em;
+  }
+  .markdown-body blockquote {
+    border-left: 3px solid var(--border);
+    margin: 1rem 0;
+    padding: 0.2rem 0 0.2rem 1rem;
+    color: var(--text-dim);
+  }
 </style>
 </head>
 <body>
@@ -87,10 +289,35 @@
       <h2>Module Dependency Diagram</h2>
       <div id="diagram-container"></div>
     </section>
+
+    <section>
+      <h2>AI-Generated Documentation</h2>
+      <div id="documentation-error"></div>
+      <div id="documentation-warnings"></div>
+      <div id="documentation-content" class="markdown-body"></div>
+    </section>
   </div>
 
 <script>
-  mermaid.initialize({ startOnLoad: false });
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: {
+      background: '#0a0a0a',
+      primaryColor: '#202020',
+      primaryTextColor: '#f2f2f2',
+      primaryBorderColor: '#f2f2f2',
+      lineColor: '#f2f2f2',
+      secondaryColor: '#161616',
+      tertiaryColor: '#161616',
+      clusterBkg: '#161616',
+      clusterBorder: '#f2f2f2',
+      edgeLabelBackground: '#0a0a0a',
+      textColor: '#f2f2f2',
+      fontFamily: 'JetBrains Mono, monospace',
+      fontSize: '13px',
+    },
+  });
 
   const btn = document.getElementById('submit-btn');
   const urlInput = document.getElementById('repo-url');
@@ -154,6 +381,45 @@
     container.innerHTML = '';
     const { svg } = await mermaid.render('diagram-svg', data.mermaid_diagram);
     container.innerHTML = svg;
+
+    // Mermaid sets width="100%" on the SVG, which shrinks a wide/dense
+    // diagram to fit the container's pixel width instead of rendering at a
+    // readable natural size — this is what makes a large diagram look
+    // "squeezed." Force the SVG back to its natural size (from its own
+    // viewBox) and let the container scroll instead of the diagram shrink.
+    const svgEl = container.querySelector('svg');
+    if (svgEl) {
+      const viewBox = svgEl.viewBox && svgEl.viewBox.baseVal;
+      if (viewBox && viewBox.width && viewBox.height) {
+        svgEl.setAttribute('width', Math.ceil(viewBox.width));
+        svgEl.setAttribute('height', Math.ceil(viewBox.height));
+      }
+      svgEl.style.maxWidth = 'none';
+    }
+
+    const docErrorEl = document.getElementById('documentation-error');
+    const docWarningsEl = document.getElementById('documentation-warnings');
+    const docContentEl = document.getElementById('documentation-content');
+    docWarningsEl.style.display = 'none';
+    docWarningsEl.innerHTML = '';
+
+    if (data.documentation_error != null) {
+      docErrorEl.textContent = `Documentation generation failed: ${data.documentation_error || 'unknown error'}`;
+      docErrorEl.style.display = 'block';
+      docContentEl.innerHTML = '';
+    } else if (data.documentation) {
+      docErrorEl.style.display = 'none';
+      docContentEl.innerHTML = DOMPurify.sanitize(marked.parse(data.documentation));
+
+      if (data.documentation_warnings && data.documentation_warnings.length > 0) {
+        const items = data.documentation_warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('');
+        docWarningsEl.innerHTML = `<strong>Partial AI coverage:</strong><ul>${items}</ul>`;
+        docWarningsEl.style.display = 'block';
+      }
+    } else {
+      docErrorEl.style.display = 'none';
+      docContentEl.innerHTML = '';
+    }
 
     resultsEl.style.display = 'block';
   }

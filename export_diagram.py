@@ -30,9 +30,12 @@ _IMPORTS_QUERY = (
 )
 
 _LAYER_COLORS = {
-    "controller": "fill:#cce5ff,stroke:#004085,color:#004085",
-    "service": "fill:#d4edda,stroke:#155724,color:#155724",
-    "database": "fill:#fff3cd,stroke:#856404,color:#856404",
+    # Grayscale only, for the neo-brutalist black/white/dark UI (Phase 8) —
+    # different shades still keep the three layers visually distinct
+    # without introducing hue.
+    "controller": "fill:#2b2b2b,stroke:#f2f2f2,color:#f2f2f2",
+    "service": "fill:#404040,stroke:#f2f2f2,color:#f2f2f2",
+    "database": "fill:#181818,stroke:#f2f2f2,color:#f2f2f2",
 }
 
 
@@ -62,15 +65,30 @@ def sanitize_id(path: str) -> str:
 
 
 def build_mermaid(modules: list, imports: list) -> str:
-    """Pure formatter (no I/O). Returns raw `flowchart TD ...` Mermaid source."""
+    """Pure formatter (no I/O). Returns raw `flowchart TD ...` Mermaid source.
+
+    Grouping precedence per module: `layer_type` (the demo fixture's
+    controller/service/database convention) first, since that's an
+    explicit, deliberate tag — then its containing folder, so a real repo
+    with an MVC-style layout (models/, views/, controllers/ as actual
+    directories, which never get a layer_type — that's only assigned by
+    filename, not folder name) still gets meaningful visual grouping
+    instead of one flat, ungrouped node list. A module with neither stays
+    a plain top-level node, exactly as before.
+    """
     node_id = {m["path"]: sanitize_id(m["path"]) for m in modules}
 
     layered = {}
+    foldered = {}
     unlayered = []
     for m in modules:
         layer = m["layer_type"]
         if layer:
             layered.setdefault(layer, []).append(m)
+            continue
+        folder = os.path.dirname(m["path"])
+        if folder:
+            foldered.setdefault(folder, []).append(m)
         else:
             unlayered.append(m)
 
@@ -79,6 +97,15 @@ def build_mermaid(modules: list, imports: list) -> str:
     for layer in sorted(layered):
         lines.append(f'    subgraph {layer}_layer["{layer.capitalize()}"]')
         for m in layered[layer]:
+            label = os.path.basename(m["path"])
+            lines.append(f'        {node_id[m["path"]]}["{label}"]')
+        lines.append("    end")
+
+    for folder in sorted(foldered):
+        # "folder_" prefix keeps this subgraph id from ever colliding with a
+        # module's own sanitized node id.
+        lines.append(f'    subgraph folder_{sanitize_id(folder)}["{folder}"]')
+        for m in foldered[folder]:
             label = os.path.basename(m["path"])
             lines.append(f'        {node_id[m["path"]]}["{label}"]')
         lines.append("    end")
@@ -95,7 +122,7 @@ def build_mermaid(modules: list, imports: list) -> str:
     if layered:
         lines.append("")
         for layer in sorted(layered):
-            style = _LAYER_COLORS.get(layer, "fill:#eee,stroke:#333,color:#333")
+            style = _LAYER_COLORS.get(layer, "fill:#2b2b2b,stroke:#f2f2f2,color:#f2f2f2")
             lines.append(f"    classDef {layer}Style {style};")
         for layer in sorted(layered):
             ids = ",".join(node_id[m["path"]] for m in layered[layer])

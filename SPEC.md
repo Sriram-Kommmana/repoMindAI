@@ -494,6 +494,30 @@ Running `python export_diagram.py`:
 7. `git status` confirmed only `export_diagram.py` and
    `diagram_output.md` were added — no Phase 1-3 files touched ✓
 
+**Post-Phase-8 enhancement — folder-level grouping (`build_mermaid`):**
+the original layer-based grouping only applies to modules with a
+`layer_type` — a property assigned purely by filename convention
+(`controller.py`/`service.py`/`database.py`), specific to this project's
+own demo fixture. A real repo using an MVC-style layout as actual
+directories (`models/`, `views/`, `controllers/`) got zero grouping —
+every file rendered as one flat, ungrouped node list regardless of its
+real folder structure. Added a second grouping tier: a module without a
+`layer_type` but with a containing folder now renders inside a Mermaid
+subgraph box labeled with that folder's relative path (single-level, not
+recursively nested — e.g. `src/core` is one flat box labeled `"src/core"`,
+not a `src` box containing a nested `core` box); a module with neither
+stays a plain top-level node, unchanged. Precedence is deliberately
+layer_type first, then folder, so the existing demo fixture's output is
+byte-identical to before (re-verified: same 3 layer-styled subgraphs, 3
+ungrouped nodes, 5 edges, 3 classDef/class pairs). Verified against a real
+23-file JS repo with genuine subdirectories (`src/`, `src/core`,
+`src/modules`, `dist/`, `scripts/`, `tests/`): all six folders rendered as
+correctly labeled boxes, cross-folder import edges (e.g. a test file
+importing a `src/core` module) rendered correctly across box boundaries,
+and the output was confirmed to render as valid SVG (no syntax errors) via
+a live `mermaid.render()` call in an actual browser, not just a text-level
+check.
+
 ---
 
 ## Implementation Scope — Phase 5a (URL-to-Local-Clone Wrapper) — COMPLETE
@@ -847,3 +871,398 @@ Response:
 - ADR Reconstruction, Repository Q&A, or any LLM/agent logic
 - Styling polish beyond basic readability
 - Multiple pages or navigation
+
+**Post-Phase-8 enhancement — neo-brutalist dark redesign:** on explicit
+user request, restyled `static/index.html` from the original plain
+light-mode layout to a dark, black/white/grayscale-only neo-brutalist
+theme: thick white borders, hard offset drop shadows (no blur) on
+sections/buttons, sharp corners (no border-radius), bold uppercase
+headers (Space Grotesk) over monospace body text (JetBrains Mono, both
+via Google Fonts), and a "pressed" button interaction (shadow
+collapses/shifts on hover/active). Also updated `mermaid.initialize()`'s
+`themeVariables` to match the dark palette, and — since backend-generated
+`classDef` styles override the JS theme for layer-tagged nodes — updated
+`export_diagram.py`'s `_LAYER_COLORS` from blue/green/tan to three shades
+of gray, so the diagram stays monochrome end-to-end rather than showing
+old accent colors on the new dark background. No structural HTML changes
+and no JS logic changes beyond the Mermaid theme config — every element
+id/class the existing `renderResults()` logic depends on is unchanged, so
+this was a purely visual, zero-functional-risk change. Verified visually
+in a live browser across all four result sections (parse summary stat
+tiles, architecture drift + the "no violations" badge, the dark-themed
+dependency diagram with folder subgraphs, and the rendered Markdown
+documentation) against a real analyzed repo.
+
+---
+
+## Implementation Scope — Phase 8 (LLM-Generated Documentation, via Groq)
+
+**Status: in progress.** Adds this project's first-ever generative
+component — everything before this phase (Phases 1-7) was purely
+deterministic (parsing, graph queries, rule checks, diagram formatting).
+
+### Phase 8 goal
+Given a panel-review deadline, generate a single comprehensive Markdown
+documentation page (in the spirit of tools like deepwiki-open) for the
+repo just analyzed, rendered in a new section of the same `static/index.html`
+page used by Phase 7. Not a multi-page wiki, not a chat/Q&A interface, not
+a RAG/vector-DB pipeline — those remain future work (see Capability 3 in
+the target architecture above).
+
+### Why this doesn't violate "deterministic before generative"
+The model is never asked to determine facts (what exists, what violates a
+rule) — those are still 100% computed by the existing Tree-sitter/Neo4j/
+rule-engine pipeline, unchanged. The LLM call only receives that already-
+computed structural evidence (modules, classes, functions, layers,
+import/call edges, violations, health score) plus bounded raw source
+excerpts, and is instructed to describe only what's present in that
+evidence — never to invent architecture or decide what counts as a
+violation.
+
+### Approach
+1. New `docs_generator.py`: builds a structural summary from the parsed
+   `data` dict + drift-engine output (no disk I/O), separately selects a
+   bounded, deterministically-ordered set of source files to read raw
+   content from (layer-tagged modules first, then modules named in a
+   violation, then by function/class count — capped at 20 files / 60,000
+   total characters), and sends both to Groq (OpenAI-compatible API, called
+   through the `openai` Python SDK pointed at Groq's base URL) with a
+   system instruction requiring the output to stay grounded in the
+   provided evidence. Default model: `openai/gpt-oss-120b` (OpenAI's
+   open-weight 120B model, hosted on Groq's custom inference hardware).
+   Automatically retries up to twice (2s delay) on transient server-side/
+   rate-limit errors.
+2. `server.py`'s `/analyze` handler calls `generate_documentation` before
+   cleaning up the temp clone directory (so raw source is still readable),
+   wrapped in `try/except` so an LLM-call failure (bad key, network,
+   timeout, empty response, or a retryable error that never clears)
+   degrades gracefully — the rest of the response (parse summary,
+   violations, health score, diagram) still returns successfully.
+3. `static/index.html` renders the returned Markdown via the `marked` CDN
+   library, sanitized with `DOMPurify` before insertion (the source
+   material includes an arbitrary untrusted public repo's own text, so
+   the rendered output is treated as untrusted HTML, consistent with how
+   every other server-derived string on this page is already escaped
+   before reaching `innerHTML`).
+4. Credentials (`GROQ_API_KEY`, optional `GROQ_MODEL` override) follow the
+   exact same `.env` + `python-dotenv` convention already used for
+   `NEO4J_URI`/`NEO4J_USER`/`NEO4J_PASSWORD`.
+
+### New code (folder structure)
+```
+docs_generator.py    # new — structural summary + bounded source excerpts + Groq call (with retry)
+```
+
+### Definition of Done (Phase 8)
+1. `POST /analyze` against a real repo returns the unchanged Phase 7
+   fields plus `documentation` (a Markdown string) and
+   `documentation_error` (null on success).
+2. The page renders a fourth section, "AI-Generated Documentation", below
+   the diagram, with headings: Overview, Architecture & Layers,
+   Module-by-Module Breakdown, Key Relationships & Dependencies, Known
+   Architecture Issues.
+3. The generated doc's claims are spot-checked against the same page's
+   Parse Summary / Architecture Drift sections — no fabricated module/
+   function/class names, and the Known Architecture Issues section
+   matches the real violations list exactly.
+4. Negative test: an invalid `GROQ_API_KEY` produces a populated
+   `documentation_error` while the first three sections still render
+   normally (graceful degradation, not a broken demo).
+5. Tested end-to-end in a browser against a real public repo.
+6. No changes to `parser/`, `graph/`, `rules/`, `check_drift.py`,
+   `mine_history.py`, `export_diagram.py`, `main.py`, or `analyze_repo.py`
+   — only `docs_generator.py` (new) and additive changes to `server.py`,
+   `static/index.html`, `requirements.txt`, `.env`.
+
+### Explicitly out of scope for Phase 8
+- Multi-page wiki, navigation, or per-module documentation pages
+- Chat/Q&A interface (that remains Capability 3 / Repository Q&A, unbuilt)
+- RAG, embeddings, or a vector database — this phase uses bounded direct
+  context (structural summary + raw source excerpts), not retrieval
+- Caching/reuse of a previously generated doc across requests
+- Any change to what counts as a violation, or to the health-score formula
+
+**Bugs caught and fixed during implementation:**
+1. The retired-model check: `gemini-2.5-flash` (the initial default) returned
+   `404 NOT_FOUND` at runtime with a message naming its replacement; the
+   default was updated to `gemini-3.6-flash` and confirmed working.
+2. The model occasionally emitted LaTeX-style notation (`$\rightarrow$`) for
+   relationship arrows, which `marked` doesn't render, showing as literal
+   text in the UI. Fixed by adding an explicit "plain GitHub-flavored
+   Markdown only, no LaTeX/math notation" rule to the system instruction;
+   re-verified clean on a re-run.
+3. **Silent blank documentation section on a larger real repo (19 files):**
+   the Gemini call exceeded the original 25s timeout, raising
+   `concurrent.futures.TimeoutError` — whose `str()` is `""` (empty) in
+   Python. `server.py` faithfully passed that empty string through as
+   `documentation_error`, and `static/index.html`'s `if (data.documentation_error)`
+   check treated the empty string as falsy, silently hiding the error
+   entirely (no error shown, no content shown). Fixed three ways: (a)
+   `docs_generator.py` now catches the timeout and re-raises with an
+   explicit, non-empty message; (b) `server.py` falls back to
+   `type(exc).__name__` if `str(exc)` is ever empty for any exception type;
+   (c) the frontend checks `data.documentation_error != null` instead of
+   truthiness, so even a genuinely empty-but-present error string still
+   displays. Also raised the timeout from 25s to 45s to reduce how often
+   larger real repos hit it at all. Verified via a forced-timeout unit
+   check (confirms a real message now) and a live 23-file/147-function repo
+   (a transient Gemini 503 surfaced correctly instead of going blank).
+
+**Provider round-trip (Gemini → OpenRouter → back to Gemini):** despite the
+fixes above, Gemini continued returning transient `503 UNAVAILABLE` ("high
+demand") errors during live testing ahead of the panel review — a capacity
+issue on Google's side, not something fixable in this codebase. Tried
+switching to OpenRouter's free-tier NVIDIA Nemotron 3.5 Lightning
+(`nvidia/nemotron-3.5-lightning:free`) instead — OpenAI-compatible API via
+the standard `openai` SDK, 1M-token context, and a free-tier rate limit
+(20 req/min, 50-1,000 req/day) that looked more than sufficient on paper.
+In practice, that free tier **never completed a single request** across
+three separate tries during testing (timed out at 45s, then 90s+ due to a
+separate bug — see below — then a full 150s with a correct fix in place) —
+too slow/congested right now to be demo-reliable, even though the
+integration itself was correct (verified via a forced-timeout unit test and
+a clean error surfacing on a real 503 from a different, larger test repo).
+Reverted to Gemini, keeping the timeout/error-surfacing fixes from the bugs
+above, and added automatic retry (up to `MAX_RETRIES=2`, 2s delay) for
+transient 503/429/UNAVAILABLE/RESOURCE_EXHAUSTED errors specifically —
+Gemini was consistently fast (12-18s) whenever it wasn't hitting that one
+transient condition, so a short retry is expected to mask most occurrences
+without materially changing typical latency. `docs_generator.py`'s
+prompt-building and structural-summary logic is entirely provider-agnostic
+and needed no changes across either switch — only the client construction
+and the API call itself changed each time.
+
+**A second bug surfaced switching providers, worth recording:** the
+original timeout implementation used `with ThreadPoolExecutor(...) as
+pool:`, whose `__exit__` calls `shutdown(wait=True)` — this blocks until
+the background thread actually finishes, even after `.result(timeout=...)`
+already gave up waiting on it. This silently defeated the entire timeout
+mechanism: a slow OpenRouter call still hung the request for 90s+ despite a
+45s deadline, because exiting the `with` block re-blocked on the same slow
+thread. Fixed by managing the executor manually
+(`pool = ThreadPoolExecutor(...)` / `pool.shutdown(wait=False)` in a
+`finally`) so an abandoned slow call can keep running in the background
+without blocking the response. Verified via an isolated test (a simulated
+30s call with a 2s timeout correctly returned in ~2s, not 30s) before
+re-verifying against the real pipeline.
+
+**Final provider switch (Gemini → Groq):** even with retry logic, Gemini
+continued to fail live (persistent, not just occasional, 503s), so switched
+to Groq — OpenAI-compatible API via the same `openai` SDK already used for
+the OpenRouter attempt, chosen for its custom inference hardware and
+reputation for low, consistent latency. The initially-assumed model name
+(`llama-3.3-70b-versatile`, based on general Groq documentation) returned
+`404 model_not_found` for this account — queried `client.models.list()`
+directly to get the actual available model set, and selected
+`openai/gpt-oss-120b` (OpenAI's open-weight 120B model) for the best
+available output quality among what was actually accessible. Result: the
+full `/analyze` pipeline (clone + parse + load + drift + diagram +
+documentation) completed in **8.4 seconds** end-to-end against the test
+repo — documentation generation itself now a small fraction of total
+latency rather than the dominant cost. Generated output quality was
+noticeably richer than earlier providers too: it correctly cited actual
+docstrings from the source excerpts (not just signatures) and used Markdown
+tables for the architecture/module breakdowns. All facts cross-checked
+correctly (module/class/function names, health score, violations) with no
+regression in grounding accuracy. `GEMINI_API_KEY`/`GEMINI_MODEL` were
+replaced with `GROQ_API_KEY`/`GROQ_MODEL` in `.env`, and `google-genai` was
+replaced with `openai` in `requirements.txt` (same package as the
+OpenRouter attempt, since both are OpenAI-compatible APIs).
+
+**Bug found on a larger real repo — request too large for Groq's free-tier
+TPM limit:** a 19-file JS repo produced `413 rate_limit_exceeded — Request
+too large... Limit 8000, Requested 20292` for `openai/gpt-oss-120b`
+(8,000 tokens per minute on the free tier). Root cause: `_build_structural_summary`
+had no overall size cap — only the call-edges list was bounded (at 300
+entries, itself large enough to dominate the budget on a repo with many
+function calls), while the module/class/function listing and import list
+were completely unbounded. More API keys would **not** have fixed this: the
+error is one oversized single request, not many small requests accumulating
+against a per-minute budget — every free-tier key carries the same 8,000
+TPM cap. Fixed by: tightening `MAX_FILES` (20→8), `MAX_CHARS_PER_FILE`
+(4000→1500), `MAX_TOTAL_SOURCE_CHARS` (60,000→10,000), capping call edges
+at 40 (from 300) with an "N more omitted" note, adding a
+`MAX_STRUCTURAL_SUMMARY_CHARS` (6,000) cap on the structural summary as a
+whole, adding a final `MAX_PROMPT_CHARS` (14,000) hard backstop on the
+combined prompt in `build_prompt` (trims source excerpts first, since
+health score/violations — reordered to the top of the structural
+summary — are the more important half to keep intact under any
+truncation), and setting `max_tokens=1200` on the Groq call to bound output
+token usage too. Also fixed the retry logic to stop treating "request too
+large" as retryable — it shares Groq's generic `rate_limit_exceeded` error
+code with genuinely transient throttling, but retrying an *identical*
+oversized payload after a delay fails identically every time, wasting
+several seconds for no benefit; a `_NON_RETRYABLE_MARKERS` check
+(matching on "reduce your message size" / "Request too large") now takes
+priority over the retryable-marker check. Re-verified against the same
+147-function repo that would have exceeded 20,000 tokens before (now
+~4,700 estimated input tokens, comfortably under budget, succeeding in
+9.7s) and against the original small test repo (no regression).
+
+---
+
+## Implementation Scope — Phase 8b (Map-Reduce Documentation Generation)
+
+**Status: DONE and verified.**
+
+### Problem
+Even with the bounded-context fixes above, the single-call design fed the
+model a repo-wide structural summary (itself capped) plus raw source for
+only ~8 "important" files. For any repo bigger than a small demo fixture,
+most files got no real source coverage, and for a large enough repo even
+the structural summary got truncated — some modules never appeared in the
+prompt at all. Confirmed real-world: a repo with only 19 files could still
+overflow Groq's free-tier TPM cap on a single call.
+
+### Why not RAG
+Evaluated and explicitly rejected: retrieval-augmented generation narrows
+scope to answer one query, which is the opposite of what "comprehensive,
+whole-repo documentation" needs. Every file has to be covered, not just
+the ones a similarity search judges most relevant to some artificial
+"describe everything" query — there's no query that meaningfully narrows
+"everything." The right fix is **map-reduce summarization**: chunk the
+repo, describe each chunk in its own call, then synthesize a connective
+overview from the chunk results.
+
+### Design
+- `grouping.py` (new): `group_modules()` — the same grouping precedence
+  already verified for the Mermaid diagram (`export_diagram.py`'s
+  `build_mermaid`): `layer_type` first, then containing folder
+  (single-level), then a flat root bucket. Deliberately duplicated rather
+  than imported from `export_diagram.py`, to avoid pulling the neo4j
+  driver into a pure, no-I/O function.
+- Each group is split into batches of at most 10 modules
+  (`MAP_MAX_MODULES_PER_BATCH`). Every module in a batch gets a raw-source
+  excerpt — batches are small enough that full per-batch coverage is
+  affordable, which is the actual fix for the completeness bug.
+- **Map phase**: one LLM call per batch, producing only a per-file
+  `####`-level breakdown for that batch (not a full document). Runs with
+  `MAP_MAX_CONCURRENCY=2` workers.
+- **Reduce phase**: one final call synthesizing `## Overview` and
+  `## Architecture & Layers` from the (much smaller, already-condensed)
+  per-batch results — never sees raw source.
+- **`## Known Architecture Issues` and `## Key Relationships &
+  Dependencies` are now 100% deterministic Python templating, zero LLM
+  involvement** — both are exhaustive structured data already available
+  (violations list, health score, import/call edges); asking a model to
+  reproduce them verbatim only risked paraphrase or omission for no
+  benefit, for exactly the two sections that most need to be authoritative.
+- **Fast path**: a repo whose modules all land in one group (rare in
+  practice — even small repos usually span 2+ folders) skips map-reduce
+  entirely and makes one call, at parity with the old single-call cost.
+- **Cost ceiling, not a time ceiling**: `MAX_TOTAL_MAP_CALLS=40` bounds
+  how many LLM calls one analysis can trigger (protects the account's
+  shared per-day budget); by explicit user decision there is **no
+  wall-clock cap** — a large repo takes however long it takes rather than
+  returning early/partial results on a timer.
+- **Every per-batch or reduce failure degrades to a clearly-marked
+  deterministic fallback instead of failing the whole document.**
+  `generate_documentation()` now only raises for catastrophic setup
+  failure (missing `GROQ_API_KEY`); a failed batch becomes a deterministic
+  module listing, a failed reduce becomes a templated overview, and both
+  surface as a new `documentation_warnings` list (additive field in
+  `server.py`'s response) — "some documentation" beats "no documentation
+  field" for exactly the bug this redesign fixes. `static/index.html`
+  surfaces these warnings in a dedicated notice above the rendered doc.
+
+### Bugs found and fixed during implementation
+1. **Real-world grounding overreach**: a batch describing `src/index.js`
+   (which imports from `src/core/*.js`) went on to describe those imported
+   files too, even though they weren't in *that* batch's evidence — those
+   files get their own, separately-grounded section elsewhere. Fixed by
+   strengthening the grounding rule to explicitly forbid describing a
+   file not in the current batch's evidence, even one visibly imported in
+   the source shown. Re-verified clean on the repo that triggered it.
+2. **Rate-limit cooldown was a guess, not the actual window**: a fixed
+   15s cooldown on a genuine 429 repeatedly retried into a still-exhausted
+   per-minute token budget (observed: several batches cycling through all
+   `MAX_RETRIES` attempts, each waiting 15s into a budget that hadn't
+   actually reset yet, ballooning a 23-file repo's total time past two
+   minutes). Groq's 429 message names the exact wait ("please try again in
+   6.07s") — now parsed directly via regex and used as the cooldown
+   (+1s margin), with a fixed fallback only if parsing fails. Re-verified:
+   the same repo that previously stalled completed in ~90s with every
+   retry succeeding on the first attempt after waiting.
+3. **Per-call size was too close to the shared TPM ceiling for true
+   concurrency**: two `MAP_MAX_CONCURRENCY=2` calls at the original
+   11,000-char budget could together approach the account's observed
+   ~8,000 TPM limit, causing frequent 429s under real concurrent load.
+   Tightened `MAP_MAX_PROMPT_CHARS` (11,000→7,000) and
+   `REDUCE_MAX_INPUT_CHARS` (9,000→6,000) so two concurrent calls
+   comfortably fit together.
+4. **Map output truncation**: one batch's real prose was cut off
+   mid-sentence by `MAP_MAX_OUTPUT_TOKENS=700` on a 5-file batch. Raised
+   to 1,000; not re-observed after.
+
+### Verification
+- **Unit-level** (no network calls, deterministic): `_plan_batches` with
+  50 synthetic single-module groups correctly kept 40 and overflowed 10
+  to `structural_only`, with total module count conserved exactly; a
+  second case with one 45-module group mixed into 39 single-module groups
+  correctly split that group mid-batch (10 kept, 35 overflowed) under the
+  same cap. Mocked `_call_with_deadline` to inject a failure into one
+  specific batch — confirmed that batch degrades to a deterministic
+  listing with an honest warning while every other batch's real content
+  ships unaffected, and `documentation_error` stays `None`. Same for a
+  mocked reduce-call failure — confirmed the deterministic Overview
+  fallback is used while all map sections and the deterministic sections
+  ship normally.
+- **Real-world**: `kennethreitz/samplemod` (9 files, 4 groups: docs/
+  sample/ tests/ root) and `lam0819/MicroUI` (23 files, 6 groups) both
+  ran the actual full map-reduce path (neither is a single-group repo) —
+  confirmed **every module path appears somewhere in the final
+  markdown** in both cases, the actual regression test for the bug this
+  phase fixes. MicroUI's run hit real, repeated 429s from heavy same-day
+  testing load and demonstrated the graceful-degradation path for real
+  (one group — `src/core` — fell back to a structural listing with an
+  honest `documentation_warnings` entry) rather than only in a mocked
+  test.
+
+### Explicitly out of scope
+- A second-level/hierarchical reduce for repos with enough groups that
+  even the per-group equal-share truncation in `_build_reduce_input`
+  becomes too thin to be useful (`REDUCE_MAX_GROUPS_WITH_DETAIL=15`) —
+  no real repo tested this session had enough groups to need it.
+- Calibrating `MAP_MAX_CONCURRENCY`/prompt-size constants against a
+  higher-tier Groq quota — current values are tuned against this
+  account's observed free-tier ~8,000 TPM ceiling specifically.
+- Async/background job architecture — by explicit user decision, stays
+  fully synchronous within the single `POST /analyze` request/response.
+
+### Post-verification tuning fix — real-world truncation and rate-limit collisions
+The user ran a real 13-group repository (denser code than anything tested
+above — multiple classes/methods per file) and reported two visible
+defects: several AI-written sections cut off mid-sentence (e.g. a
+constructor signature ending mid-parameter-list, a section ending on a
+lone backtick), and 3 of 13 groups fell back to bare structural listings
+instead of prose. Both traced to concrete, fixable causes:
+
+1. **Output-length truncation**: `MAP_MAX_OUTPUT_TOKENS=1000` and
+   `REDUCE_MAX_OUTPUT_TOKENS=900` were tuned against earlier, simpler test
+   repos — a batch of up to 10 files with multiple classes/methods each
+   needs more room to finish every file it starts describing, and a
+   13-group reduce call needs more room to summarize all of them. Raised
+   to `MAP_MAX_OUTPUT_TOKENS=1600` / `REDUCE_MAX_OUTPUT_TOKENS=1500`,
+   trimming `MAP_MAX_PROMPT_CHARS` (7,000→6,000) and
+   `REDUCE_MAX_INPUT_CHARS` (6,000→5,000) to compensate so total per-call
+   token cost doesn't rise much. Also added an explicit "you have a
+   limited response budget — wrap up your current file/section with a
+   complete thought and stop, never start one you won't finish" rule to
+   both the map and reduce system instructions, as a second line of
+   defense against mid-sentence cutoffs regardless of the exact numeric
+   budget.
+2. **Concurrent-call rate-limit collisions**: `MAP_MAX_CONCURRENCY=2` meant
+   two calls, each individually under the account's ~8,000 TPM ceiling,
+   could still collide and exceed it together — causing more batches to
+   exhaust `MAX_RETRIES` than genuinely necessary. Reduced to
+   `MAP_MAX_CONCURRENCY=1` (fully serialized map calls) and raised
+   `MAX_RETRIES` from 2 to 3 for additional resilience against contention
+   from the account's other concurrent usage.
+
+**Re-verified** against `lam0819/MicroUI` under the same kind of real,
+observed account-wide rate-limit pressure (repeated genuine 429s in the
+log, `Used` consistently 5,000-8,000 of the 8,000 TPM budget) — every
+single batch now succeeded within its retry budget (`documentation_warnings: []`),
+and a full manual read of the resulting document found no truncated
+sentences anywhere, confirming both fixes held under real contention, not
+just in a quiet account state.
