@@ -1,0 +1,348 @@
+{
+  "synthetic": {
+    "Python": {
+      "overall": {
+        "tp": 50,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "per_rule": {
+        "no-controller-imports-db": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-controller-to-db": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-db-imports-controller": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-db-imports-service": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-service-imports-controller": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    },
+    "JavaScript (CommonJS)": {
+      "overall": {
+        "tp": 50,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "per_rule": {
+        "no-controller-imports-db": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-controller-to-db": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-db-imports-controller": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-db-imports-service": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-service-imports-controller": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    },
+    "TypeScript (ES modules)": {
+      "overall": {
+        "tp": 50,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "per_rule": {
+        "no-controller-imports-db": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-controller-to-db": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-db-imports-controller": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-db-imports-service": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "no-service-imports-controller": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    }
+  },
+  "all": {
+    "overall": {
+      "tp": 150,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  },
+  "hard_cases": {
+    "Python": {
+      "imports_rule_recall": 1.0,
+      "calls_rule_recall": 0.0,
+      "false_positives": 0
+    },
+    "JavaScript (CommonJS)": {
+      "imports_rule_recall": 1.0,
+      "calls_rule_recall": 0.0,
+      "false_positives": 0
+    },
+    "TypeScript (ES modules)": {
+      "imports_rule_recall": 1.0,
+      "calls_rule_recall": 0.0,
+      "false_positives": 0
+    }
+  },
+  "real": [
+    {
+      "repo": "https://github.com/nsidnev/fastapi-realworld-example-app",
+      "baseline": [
+        [
+          "no-controller-imports-db",
+          "app/api/routes/articles/articles_common.py",
+          "",
+          "app/api/dependencies/database.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/articles/articles_common.py",
+          "",
+          "app/db/repositories/articles.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/articles/articles_resource.py",
+          "",
+          "app/api/dependencies/database.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/articles/articles_resource.py",
+          "",
+          "app/db/repositories/articles.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/authentication.py",
+          "",
+          "app/api/dependencies/database.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/authentication.py",
+          "",
+          "app/db/errors.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/authentication.py",
+          "",
+          "app/db/repositories/users.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/comments.py",
+          "",
+          "app/api/dependencies/database.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/comments.py",
+          "",
+          "app/db/repositories/comments.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/profiles.py",
+          "",
+          "app/api/dependencies/database.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/profiles.py",
+          "",
+          "app/db/repositories/profiles.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/tags.py",
+          "",
+          "app/api/dependencies/database.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/tags.py",
+          "",
+          "app/db/repositories/tags.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/users.py",
+          "",
+          "app/api/dependencies/database.py",
+          ""
+        ],
+        [
+          "no-controller-imports-db",
+          "app/api/routes/users.py",
+          "",
+          "app/db/repositories/users.py",
+          ""
+        ]
+      ],
+      "injected": 12,
+      "baseline_kept": true,
+      "result": {
+        "tp": 12,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "missed": [],
+      "unexpected": []
+    },
+    {
+      "repo": "https://github.com/hagopj13/node-express-boilerplate",
+      "baseline": [],
+      "injected": 3,
+      "baseline_kept": true,
+      "result": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "missed": [],
+      "unexpected": []
+    },
+    {
+      "repo": "https://github.com/w3tecch/express-typescript-boilerplate",
+      "baseline": [],
+      "injected": 12,
+      "baseline_kept": true,
+      "result": {
+        "tp": 12,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "missed": [],
+      "unexpected": []
+    }
+  ],
+  "parity": [
+    true,
+    true,
+    true
+  ]
+}

@@ -1303,3 +1303,120 @@ A live end-to-end run against the project's own `test_repo` fixture (6
 files, 4 groups) with 2 real Groq keys completed in 5.6s with both keys
 genuinely used across the 4 map calls + 1 reduce call (`key[1], key[0],
 key[0], key[1], key[0]`), zero warnings, zero failed batches.
+
+---
+
+## Implementation Scope — Completion (temporal graph, ADRs, full Q&A, agents, evaluation)
+
+**Status: built and verified**, except the LLM-dependent evaluation runs
+noted at the end. This completes every capability of sections 4–12 above,
+with the scope decisions listed here. `README.md` is the user-facing guide.
+
+### Decisions made for this phase
+- Neo4j stays on AuraDB; LLM access goes through `llm.py` with a Bedrock /
+  Groq switch (`LLM_PROVIDER`, per-purpose overrides), Bedrock by default
+  when its key is set, and an automatic Groq fallback for tool calling.
+- LangGraph orchestrates the three capabilities (`agents/drift_graph.py`,
+  `agents/adr_graph.py`, `agents/qa_graph.py`). Nodes are plain Python
+  calling `llm.py`; no LangChain model wrappers.
+- History and decisions live in Neo4j next to the code graph ("one shared
+  graph"); PostgreSQL (section 10) was not needed. The frontend stays plain
+  HTML/JS (no React). No Java, no GitHub PR mining.
+- Stays synchronous (no job queue): `/analyze` does the deterministic work;
+  the page then loads explanations, ADRs and documentation from their own
+  endpoints, in sequence, tied to the `analysis_id`.
+
+### What was built
+1. **Shared LLM layer** (`llm.py`): providers, per-key rotation and
+   cooldowns, hard deadlines, classified retries (Groq "try again in Xs",
+   including `ms` and `1m30s` forms), reasoning-tag stripping, a retry when
+   gpt-oss spends its whole budget reasoning, usage accounting.
+   `scripts/check_llm.py` checks a provider's tool-calling round trip.
+2. **Real-repo drift detection**: `rules.yaml` gained `layers` (glob/file/
+   dir patterns, innermost folder wins) and `ignore` (tests); rules gained
+   `edge: imports`. `rules/evaluate.py` is an in-memory evaluator identical
+   to the Cypher engine (cross-checked on every analysis and in tests).
+   `compute_health_normalized` replaces the per-rule formula, which pinned
+   any real repo at 0, and reports "not scored" instead of a fake 100. The
+   rules editor validates user YAML with pydantic.
+3. **Temporal graph** (`history.py`, `snapshots.py`,
+   `graph/history_loader.py`): full clone kept as the analysis workspace;
+   one streamed `git log` for commits (bulk, renames, binary handled);
+   up to 12 snapshots at evenly spaced code-changing first-parent commits,
+   materialized from git objects without touching the workspace;
+   `(:HModule)-[:H_IMPORTS {valid_from_idx, valid_to_idx}]` intervals,
+   `(:Snapshot)` health/diff nodes, `(:Developer)-[:AUTHORED]->(:Commit)
+   -[:MODIFIED]->(:Module)`, and `introduced_at` on modules.
+4. **Drift agent**: deterministic priority (severity × (1 + ln(1 + callee
+   fan-in)) × recency) and one grounded explanation per rule group, cached.
+5. **ADR reconstruction** (`adr/detect.py`, `adr/relevance.py`,
+   `agents/adr_graph.py`): detectors for dependency adoption/replacement
+   (requirements, pyproject, Pipfile, package.json; ~90 curated packages
+   in categories), initial stack, infrastructure, module groups, restructures
+   and violation changes, each pinned to its exact commit; relevance as in
+   section 7 with α=0.3, β=0.45, γ=0.25 and threshold 0.35; synthesis into
+   the Evidence/Inference/Confidence contract with deterministic validation
+   (citations ⊆ evidence, unsupported file mentions flagged, confidence
+   capped, one retry with feedback). Records are stored as `(:Decision)
+   -[:EVIDENCED_BY]->(:Commit)` and `-[:AFFECTS]->(:Module)`.
+6. **Q&A, all four intents**: a deterministic router (the "Query
+   Understanding" step) picks tool subsets; new tools for file history,
+   commits, contributors, drift trend, snapshot comparison, decision listing
+   and ADR explanation; a tool-free synthesis step when the tool budget runs
+   out; repeated identical tool calls answered from the earlier result.
+7. **Frontend**: rules editor, prioritized and explained violations, an SVG
+   health-over-time chart with time-travel diagrams per snapshot, history
+   (contributors, timeline), ADR cards, routed-intent tags in chat.
+8. **Cache** (`cache.py`) for documentation, explanations and ADRs, keyed by
+   repository, commit, rules, prompt version and model; degraded results are
+   never cached.
+
+### Bugs found and fixed along the way
+- Python imports in `src/`-layout and subfolder-rooted repos never resolved
+  (only repo-root dotted names were registered) — now unambiguous suffixes
+  and package names are registered too.
+- JS calls through destructured `require` weren't resolved — the destructured
+  names are now recorded like named ES imports.
+- The health formula pinned every real repo with one violation at 0.
+- Test files and broad `api/` folders produced false-positive violations on
+  real repos — `ignore` patterns and narrower defaults.
+- gpt-oss sometimes calls a tool even with `tool_choice="none"`; the final
+  answer is now a separate call with no tools.
+- A browser could run a stale copy of the page against the new API —
+  `Cache-Control: no-cache` on the page.
+- **Security:** a repository "URL" starting with `-` would be parsed by
+  `git clone` as an option (`--upload-pack=...`), and local paths made the
+  server clone its own filesystem. Only `http(s)://` URLs are accepted
+  (local paths behind an explicit test flag) and `--` precedes the URL.
+- Startup cleanup deleted every `repomind_*` temp folder, including other
+  running instances' workspaces — now only workspace/snapshot folders idle
+  for 24 hours.
+- ADR detection skipped bulk commits (so a squashed history lost its
+  decisions) and kept one decision per commit (so a commit changing several
+  manifests lost all but one) — bulk commits are now excluded only as
+  evidence, and same-commit decisions of one kind are merged.
+- Dependency-bump bot commits and lock files counted as ADR evidence;
+  product names like "Node.js" were flagged as unsupported file mentions.
+
+### Verification
+- `python -m pytest`: 112 tests (unit, Neo4j integration, fake-LLM agent
+  tests, API end-to-end on a scripted git repository) — all passing. The
+  `test_repo` baseline (6 files, 2 classes, 15 functions, 23 nodes, one
+  violation, legacy health 0) is unchanged, using the frozen Phase 2 rules.
+- Live runs on real repositories (MicroUI, fastapi-realworld-example-app,
+  node-express-boilerplate, express-typescript-boilerplate, cosmicpython,
+  encode/httpx with 1,482 commits) and a full browser walkthrough including
+  phone width and error states.
+- Evaluation (`eval/results/`): drift detection precision/recall/F1 1.0 on
+  150 injected violations with 150 decoys and on 27 injections into real
+  repos, with the unsupported `module.function()` call form measured
+  separately; ADR decision-point recall 46% strict / 82% temporal over 28
+  real ADRs in 3 repos with ADR folders masked; deterministic analysis in
+  12–14 s for 50–100-file repos and zero LLM calls on warm-cache repeats;
+  Q&A routing 100% on a 38-question development set.
+- **Pending (LLM budget):** the live Q&A answer evaluation and the ADR
+  synthesis scoring sheet need a provider with daily budget left — both
+  Groq keys hit their 200,000-token daily cap during evaluation. Run
+  `python eval/eval_qa.py`, `python eval/eval_adr.py --synthesize` and
+  `python eval/eval_efficiency.py` once Bedrock (or fresh Groq budget) is
+  available.

@@ -1,0 +1,383 @@
+{
+  "results": [
+    {
+      "repo": "https://github.com/thomvaill/log4brains",
+      "adrs": 19,
+      "adr_dirs": [
+        "docs/adr",
+        "packages/core/docs/adr",
+        "packages/web/docs/adr"
+      ],
+      "commits": 146,
+      "detected": 19,
+      "strict_recall": 0.579,
+      "temporal_recall": 0.789,
+      "strict_recall_top8": 0.579,
+      "precision_proxy": 0.105,
+      "distinct_points_matched": 2,
+      "matches_on_bulk_commits": 10,
+      "rows": [
+        {
+          "date": "2020-09-24",
+          "title": "Use Markdown Architectural Decision Records",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "markdown"
+          ]
+        },
+        {
+          "date": "2020-09-25",
+          "title": "Multi-packages architecture in a monorepo with Yarn and Lerna",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "lerna",
+            "yarn"
+          ]
+        },
+        {
+          "date": "2020-09-25",
+          "title": "Use Prettier-ESLint Airbnb for the code style",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "airbnb",
+            "lint",
+            "prettier"
+          ]
+        },
+        {
+          "date": "2020-09-25",
+          "title": "Use Next.js for Static Site Generation",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "next"
+          ]
+        },
+        {
+          "date": "2020-09-26",
+          "title": "Use the ADR number as its unique ID",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2020-09-26",
+          "title": "React file structure organized by feature",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "file",
+            "react"
+          ]
+        },
+        {
+          "date": "2020-09-27",
+          "title": "Avoid default exports",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2020-09-27",
+          "title": "Avoid React.FC type",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "react"
+          ]
+        },
+        {
+          "date": "2020-09-27",
+          "title": "Use React hooks",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "hooks",
+            "react"
+          ]
+        },
+        {
+          "date": "2020-10-02",
+          "title": "Use Explicit Architecture and DDD for the core API",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "core"
+          ]
+        },
+        {
+          "date": "2020-10-03",
+          "title": "Markdown parsing is part of the domain",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "markdown"
+          ]
+        },
+        {
+          "date": "2020-10-07",
+          "title": "Next.js persistent layout pattern",
+          "temporal": true,
+          "match": "Initial technology stack: chai (testing), jest (testing), joi (validation / schemas), next (web framework), nodemon (server / runtime), react (frontend framework)",
+          "match_date": "2020-09-25",
+          "shared": [
+            "next"
+          ]
+        },
+        {
+          "date": "2020-10-16",
+          "title": "Use the ADR slug as its unique ID",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2020-10-26",
+          "title": "The core API is responsible for enhancing the ADR markdown body with MDX",
+          "temporal": false,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2020-10-27",
+          "title": "ADR link resolver in the domain",
+          "temporal": false,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2020-11-03",
+          "title": "Use Lunr for search",
+          "temporal": false,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2021-01-13",
+          "title": "Distribute Log4brains as a global NPM package",
+          "temporal": true,
+          "match": "Initial technology stack: @log4brains/cli, @log4brains/cli-common, @log4brains/init, @log4brains/web, chalk",
+          "match_date": "2021-01-13",
+          "shared": [
+            "brains",
+            "distribute",
+            "global",
+            "log",
+            "npm",
+            "package"
+          ]
+        },
+        {
+          "date": "2024-09-26",
+          "title": "Transition to Simplified Git Flow",
+          "temporal": false,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2024-12-17",
+          "title": "Switch back to GitHub Flow, but keeping the automated beta releases",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        }
+      ],
+      "sensitivity": {
+        "default (0.3/0.45/0.25)": {
+          "mean_evidence": 2.5,
+          "mean_jaccard_vs_default": 1.0
+        },
+        "time-heavy (0.6/0.2/0.2)": {
+          "mean_evidence": 6.5,
+          "mean_jaccard_vs_default": 0.615
+        },
+        "graph-heavy (0.15/0.7/0.15)": {
+          "mean_evidence": 2.0,
+          "mean_jaccard_vs_default": 0.875
+        },
+        "text-heavy (0.15/0.25/0.6)": {
+          "mean_evidence": 1.0,
+          "mean_jaccard_vs_default": 0.625
+        },
+        "equal (1/3 each)": {
+          "mean_evidence": 3.0,
+          "mean_jaccard_vs_default": 0.9
+        }
+      }
+    },
+    {
+      "repo": "https://github.com/mrwilson/adr-viewer",
+      "adrs": 6,
+      "adr_dirs": [
+        "doc/adr"
+      ],
+      "commits": 108,
+      "detected": 9,
+      "strict_recall": 0.167,
+      "temporal_recall": 1.0,
+      "strict_recall_top8": 0.167,
+      "precision_proxy": 0.111,
+      "distinct_points_matched": 1,
+      "matches_on_bulk_commits": 0,
+      "rows": [
+        {
+          "date": "2018-09-02",
+          "title": "Record architecture decisions",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2018-09-02",
+          "title": "Expose command line interface",
+          "temporal": true,
+          "match": "Adopt click",
+          "match_date": "2018-09-02",
+          "shared": [
+            "interface"
+          ]
+        },
+        {
+          "date": "2018-09-09",
+          "title": "Use same colour for all headers",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2018-09-09",
+          "title": "Distinguish superseded records with colour",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2018-09-09",
+          "title": "Distinguish amendments to records with colour",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2018-09-10",
+          "title": "Accessibility as a first-class concern",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        }
+      ],
+      "sensitivity": {
+        "default (0.3/0.45/0.25)": {
+          "mean_evidence": 3.0,
+          "mean_jaccard_vs_default": 1.0
+        },
+        "time-heavy (0.6/0.2/0.2)": {
+          "mean_evidence": 12.0,
+          "mean_jaccard_vs_default": 0.25
+        },
+        "graph-heavy (0.15/0.7/0.15)": {
+          "mean_evidence": 3.0,
+          "mean_jaccard_vs_default": 1.0
+        },
+        "text-heavy (0.15/0.25/0.6)": {
+          "mean_evidence": 2.0,
+          "mean_jaccard_vs_default": 0.667
+        },
+        "equal (1/3 each)": {
+          "mean_evidence": 5.0,
+          "mean_jaccard_vs_default": 0.6
+        }
+      }
+    },
+    {
+      "repo": "https://github.com/constructorfleet/mcp-plex",
+      "adrs": 3,
+      "adr_dirs": [
+        "docs/adr"
+      ],
+      "commits": 238,
+      "detected": 11,
+      "strict_recall": 0.333,
+      "temporal_recall": 0.667,
+      "strict_recall_top8": 0.0,
+      "precision_proxy": 0.091,
+      "distinct_points_matched": 1,
+      "matches_on_bulk_commits": 0,
+      "rows": [
+        {
+          "date": "2025-10-05",
+          "title": "Adopt Architecture Decision Records",
+          "temporal": true,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        },
+        {
+          "date": "2025-10-05",
+          "title": "Loader Multi-Worker Pipeline",
+          "temporal": true,
+          "match": "Adopt coverage",
+          "match_date": "2025-10-04",
+          "shared": [
+            "loader"
+          ]
+        },
+        {
+          "date": "2026-07-04",
+          "title": "Allow SSE and Streamable HTTP to Coexist in One Process",
+          "temporal": false,
+          "match": null,
+          "match_date": null,
+          "shared": []
+        }
+      ],
+      "sensitivity": {
+        "default (0.3/0.45/0.25)": {
+          "mean_evidence": 12.0,
+          "mean_jaccard_vs_default": 1.0
+        },
+        "time-heavy (0.6/0.2/0.2)": {
+          "mean_evidence": 12.0,
+          "mean_jaccard_vs_default": 0.714
+        },
+        "graph-heavy (0.15/0.7/0.15)": {
+          "mean_evidence": 12.0,
+          "mean_jaccard_vs_default": 0.6
+        },
+        "text-heavy (0.15/0.25/0.6)": {
+          "mean_evidence": 4.0,
+          "mean_jaccard_vs_default": 0.333
+        },
+        "equal (1/3 each)": {
+          "mean_evidence": 12.0,
+          "mean_jaccard_vs_default": 0.846
+        }
+      }
+    }
+  ]
+}

@@ -131,6 +131,48 @@ def build_mermaid(modules: list, imports: list) -> str:
     return "\n".join(lines)
 
 
+def build_folder_mermaid(modules: list, imports: list) -> str:
+    """Folder-level dependency diagram (one node per folder, edges labelled
+    with the number of module imports between folders). Used for historical
+    snapshots, where a full module-level diagram of a large repo would
+    exceed Mermaid's text size limit."""
+    def folder_of(path):
+        return os.path.dirname(path) or "(root)"
+
+    files = {}
+    layers = {}
+    for m in modules:
+        folder = folder_of(m["path"])
+        files[folder] = files.get(folder, 0) + 1
+        if m.get("layer_type"):
+            layers.setdefault(folder, {}).setdefault(m["layer_type"], 0)
+            layers[folder][m["layer_type"]] += 1
+
+    edges = {}
+    for e in imports:
+        a, b = folder_of(e["from_path"]), folder_of(e["to_path"])
+        if a != b and a in files and b in files:
+            edges[(a, b)] = edges.get((a, b), 0) + 1
+
+    def node(folder):
+        return "folder_" + re.sub(r"[^0-9a-zA-Z_]", "_", folder)
+
+    lines = ["flowchart LR"]
+    for folder in sorted(files):
+        count = files[folder]
+        lines.append(f'    {node(folder)}["{folder} ({count} file{"s" if count != 1 else ""})"]')
+    for (a, b), n in sorted(edges.items()):
+        lines.append(f"    {node(a)} -->|{n}| {node(b)}")
+
+    majority = {f: max(counts, key=counts.get) for f, counts in layers.items()}
+    for layer in sorted(set(majority.values())):
+        style = _LAYER_COLORS.get(layer, "fill:#2b2b2b,stroke:#f2f2f2,color:#f2f2f2")
+        lines.append(f"    classDef {layer}Style {style};")
+        ids = ",".join(node(f) for f in sorted(majority) if majority[f] == layer)
+        lines.append(f"    class {ids} {layer}Style;")
+    return "\n".join(lines)
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
 

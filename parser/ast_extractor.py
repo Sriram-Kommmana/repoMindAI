@@ -61,7 +61,7 @@ def _parse_python_repo(repo_path: str) -> dict:
         tree = parser.parse(source)
         raw_files[rel_path] = _extract_file(tree.root_node, rel_path)
 
-    dotted_to_path = {_dotted_name(path): path for path in raw_files}
+    dotted_to_path = _build_module_index(raw_files)
 
     modules = [
         {
@@ -124,6 +124,32 @@ def _iter_py_files(repo_path: str):
 
 def _dotted_name(module_path: str) -> str:
     return module_path[:-3].replace("/", ".") if module_path.endswith(".py") else module_path
+
+
+def _build_module_index(paths) -> dict:
+    """Maps importable dotted names to repo paths.
+
+    Real repos rarely import relative to the repo root: a src-layout repo
+    writes `from pkg.x import y` for src/pkg/x.py, and a backend/ subproject
+    writes `from app.core import z` for backend/app/core.py. Besides each
+    file's full dotted name, register packages (pkg/__init__.py -> pkg) and
+    every shorter dotted suffix that exactly one file can claim.
+    """
+    index = {_dotted_name(path): path for path in paths}
+    for path in paths:
+        dotted = _dotted_name(path)
+        if dotted.endswith(".__init__"):
+            index.setdefault(dotted[: -len(".__init__")], path)
+
+    claims = {}
+    for name, path in index.items():
+        parts = name.split(".")
+        for i in range(1, len(parts)):
+            claims.setdefault(".".join(parts[i:]), set()).add(path)
+    for alias, claimants in claims.items():
+        if alias not in index and alias != "__init__" and len(claimants) == 1:
+            index[alias] = next(iter(claimants))
+    return index
 
 
 def _extract_file(root_node, rel_path: str) -> dict:

@@ -185,9 +185,10 @@ def _extract_declared_functions(node) -> list:
 def _extract_declared_requires(node) -> list:
     """Extract IMPORTS entries from `const/let/var` declarations whose
     initializer is a `require(...)` call — covers both `const foo =
-    require('./foo')` and destructured `const { a, b } = require('./foo')`
-    (the destructured names aren't tracked for CALLS resolution, same as
-    Python leaves plain `import X` untracked for calls)."""
+    require('./foo')` and destructured `const { a, b: c } = require('./foo')`.
+    Destructured names are also recorded like named ES imports
+    (spec, name, local alias), so calls through them resolve: CommonJS
+    codebases call required functions this way far more than `foo.a()`."""
     results = []
     for child in node.children:
         if child.type != "variable_declarator":
@@ -196,8 +197,20 @@ def _extract_declared_requires(node) -> list:
         if value_node is None:
             continue
         req = _extract_require(value_node)
-        if req is not None:
-            results.append(req)
+        if req is None:
+            continue
+        results.append(req)
+        pattern = child.child_by_field_name("name")
+        if pattern is not None and pattern.type == "object_pattern":
+            for prop in pattern.children:
+                if prop.type == "shorthand_property_identifier_pattern":
+                    name = prop.text.decode()
+                    results.append((req[0], name, name))
+                elif prop.type == "pair_pattern":
+                    key = prop.child_by_field_name("key")
+                    value = prop.child_by_field_name("value")
+                    if key is not None and value is not None and value.type == "identifier":
+                        results.append((req[0], key.text.decode(), value.text.decode()))
     return results
 
 

@@ -9,3 +9,6 @@ pydriller==2.12
 fastapi==0.141.1
 uvicorn==0.53.0
 openai==3.14.0
+langgraph==1.2.12
+pydantic==2.13.5
+pytest==9.1.1

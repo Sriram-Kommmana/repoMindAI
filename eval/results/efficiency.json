@@ -1,0 +1,143 @@
+{
+  "results": [
+    {
+      "repo": "https://github.com/lam0819/MicroUI",
+      "files": 23,
+      "commits": 36,
+      "analysis_seconds": 12.6,
+      "timings": {
+        "clone": 1.54,
+        "parse": 1.29,
+        "graph_load": 2.52,
+        "rules": 0.62,
+        "diagram": 0.5,
+        "history_mining": 0.06,
+        "snapshots": 5.32,
+        "history_load": 0.77
+      },
+      "reanalysis_seconds": 11.7,
+      "cold": {
+        "violations": {
+          "seconds": 0.0,
+          "calls": 0,
+          "tokens": 0,
+          "skipped": true
+        },
+        "decisions": {
+          "seconds": 7.5,
+          "calls": 1,
+          "tokens": 3028
+        },
+        "documentation": {
+          "seconds": 32.8,
+          "calls": 7,
+          "tokens": 18167
+        }
+      },
+      "warm_same": {
+        "violations": {
+          "seconds": 0.0,
+          "calls": 0,
+          "tokens": 0,
+          "skipped": true
+        },
+        "decisions": {
+          "seconds": 0.7,
+          "calls": 0,
+          "tokens": 0
+        },
+        "documentation": {
+          "seconds": 67.7,
+          "calls": 8,
+          "tokens": 21521
+        }
+      },
+      "warm_reanalysis": {
+        "violations": {
+          "seconds": 0.0,
+          "calls": 0,
+          "tokens": 0,
+          "skipped": true
+        },
+        "decisions": {
+          "seconds": 0.8,
+          "calls": 0,
+          "tokens": 0
+        },
+        "documentation": {
+          "seconds": 0.0,
+          "calls": 0,
+          "tokens": 0
+        }
+      }
+    },
+    {
+      "repo": "https://github.com/nsidnev/fastapi-realworld-example-app",
+      "files": 95,
+      "commits": 208,
+      "analysis_seconds": 14.0,
+      "timings": {
+        "clone": 1.88,
+        "parse": 0.44,
+        "graph_load": 2.58,
+        "rules": 0.69,
+        "diagram": 0.96,
+        "history_mining": 0.11,
+        "snapshots": 5.89,
+        "history_load": 1.43
+      },
+      "reanalysis_seconds": 12.2,
+      "cold": {
+        "violations": {
+          "seconds": 2.2,
+          "calls": 1,
+          "tokens": 2211
+        },
+        "decisions": {
+          "seconds": 63.9,
+          "calls": 8,
+          "tokens": 19096
+        },
+        "documentation": {
+          "seconds": 151.7,
+          "calls": 23,
+          "tokens": 48673
+        }
+      },
+      "warm_same": {
+        "violations": {
+          "seconds": 0.9,
+          "calls": 0,
+          "tokens": 0
+        },
+        "decisions": {
+          "seconds": 1.8,
+          "calls": 0,
+          "tokens": 0
+        },
+        "documentation": {
+          "seconds": 0.0,
+          "calls": 0,
+          "tokens": 0
+        }
+      },
+      "warm_reanalysis": {
+        "violations": {
+          "seconds": 0.6,
+          "calls": 0,
+          "tokens": 0
+        },
+        "decisions": {
+          "seconds": 2.8,
+          "calls": 0,
+          "tokens": 0
+        },
+        "documentation": {
+          "seconds": 0.0,
+          "calls": 0,
+          "tokens": 0
+        }
+      }
+    }
+  ]
+}

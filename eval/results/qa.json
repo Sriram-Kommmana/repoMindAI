@@ -1,0 +1,330 @@
+{
+  "routing": {
+    "n": 38,
+    "accuracy": 0.974,
+    "exact": 0.816,
+    "misses": [
+      {
+        "question": "What was the reasoning behind adding Docker?",
+        "expected": "rationale",
+        "routed": [
+          "structural"
+        ],
+        "hit": false
+      }
+    ],
+    "rows": [
+      {
+        "question": "What does src/app.py do?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Which modules import the database module?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Where is the login function defined?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "List the classes in models.py",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What functions does the user service expose?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Show me the code for handle_request",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Which files would break if I change utils.py?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What is the entry point of this app?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "How many functions are in the repository?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "How is the code organized into folders?",
+        "expected": "structural",
+        "routed": [
+          "structural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Are there any layering violations?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What is the architecture health score?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Does any controller talk to the database directly?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Is the separation of concerns respected?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Which rules are being broken?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Is there tight coupling between modules?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Does the service layer get bypassed anywhere?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "How clean is the design of this project?",
+        "expected": "architectural",
+        "routed": [
+          "architectural"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Who wrote auth.py?",
+        "expected": "historical",
+        "routed": [
+          "structural",
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "When was the cache module added?",
+        "expected": "historical",
+        "routed": [
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What changed recently?",
+        "expected": "historical",
+        "routed": [
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Who are the main contributors?",
+        "expected": "historical",
+        "routed": [
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "How many commits touched the controller?",
+        "expected": "historical",
+        "routed": [
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Show me the history of database.py",
+        "expected": "historical",
+        "routed": [
+          "structural",
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What did commit 1a2b3c4 change?",
+        "expected": "historical",
+        "routed": [
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "How did the number of modules evolve over time?",
+        "expected": "historical",
+        "routed": [
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Who last modified the routes?",
+        "expected": "historical",
+        "routed": [
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "How has the architecture health changed over time?",
+        "expected": "historical",
+        "routed": [
+          "architectural",
+          "historical"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Why was Redis introduced?",
+        "expected": "rationale",
+        "routed": [
+          "historical",
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Why did they choose Express?",
+        "expected": "rationale",
+        "routed": [
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What was the reasoning behind adding Docker?",
+        "expected": "rationale",
+        "routed": [
+          "structural"
+        ],
+        "hit": false
+      },
+      {
+        "question": "Why does the project use joi instead of @hapi/joi?",
+        "expected": "rationale",
+        "routed": [
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What motivated the switch to TypeScript?",
+        "expected": "rationale",
+        "routed": [
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What trade-offs led to splitting the services folder?",
+        "expected": "rationale",
+        "routed": [
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Explain the decision to adopt Alembic.",
+        "expected": "rationale",
+        "routed": [
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What were the major architectural decisions?",
+        "expected": "rationale",
+        "routed": [
+          "architectural",
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "Why is there a repositories layer?",
+        "expected": "rationale",
+        "routed": [
+          "architectural",
+          "rationale"
+        ],
+        "hit": true
+      },
+      {
+        "question": "What is the rationale for using environment variables for config?",
+        "expected": "rationale",
+        "routed": [
+          "rationale"
+        ],
+        "hit": true
+      }
+    ]
+  },
+  "live": []
+}

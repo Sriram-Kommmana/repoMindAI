@@ -18,22 +18,24 @@
     --border: #f2f2f2;
     --text: #f2f2f2;
     --text-dim: #999999;
+    --text-faint: #5f5f5f;
     --invert-bg: #f2f2f2;
     --invert-text: #0a0a0a;
   }
 
   * { box-sizing: border-box; }
-
   html { background: var(--bg); }
 
   body {
     font-family: 'JetBrains Mono', 'Courier New', monospace;
-    max-width: 960px;
+    max-width: 980px;
     margin: 0 auto;
     padding: 2.5rem 1.25rem 5rem;
     color: var(--text);
     background: var(--bg);
   }
+
+  [hidden] { display: none !important; }
 
   h1 {
     font-family: 'Space Grotesk', sans-serif;
@@ -48,14 +50,15 @@
     color: var(--text-dim);
     margin: 0 0 2rem;
     font-size: 0.88rem;
-    max-width: 60ch;
+    max-width: 62ch;
+    line-height: 1.6;
   }
 
   .input-row {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    margin: 1.5rem 0 2.25rem;
+    margin: 1.5rem 0 1rem;
   }
 
   #repo-url {
@@ -87,14 +90,8 @@
     box-shadow: 5px 5px 0 0 var(--border);
     transition: transform 0.08s ease, box-shadow 0.08s ease;
   }
-  button:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-    box-shadow: 7px 7px 0 0 var(--border);
-  }
-  button:active:not(:disabled) {
-    transform: translate(3px, 3px);
-    box-shadow: 0 0 0 0 var(--border);
-  }
+  button:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 0 var(--border); }
+  button:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 0 0 0 0 var(--border); }
   button:disabled {
     background: var(--surface-2);
     color: var(--text-dim);
@@ -102,6 +99,56 @@
     box-shadow: none;
     cursor: default;
   }
+  button.secondary {
+    background: var(--surface);
+    color: var(--text);
+    padding: 0.55rem 0.9rem;
+    font-size: 0.75rem;
+    box-shadow: 3px 3px 0 0 var(--border);
+  }
+
+  button:focus-visible, textarea:focus-visible, summary:focus-visible, input:focus-visible, a:focus-visible,
+  .chart-point:focus-visible {
+    outline: 3px solid var(--text);
+    outline-offset: 3px;
+  }
+
+  a { color: var(--text); }
+
+  /* ---------- rules editor ---------- */
+  .rules-panel {
+    margin: 0 0 2rem;
+    border: 2px solid var(--text-dim);
+    background: var(--surface);
+  }
+  .rules-panel > summary {
+    cursor: pointer;
+    padding: 0.7rem 0.9rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+  }
+  .rules-panel[open] > summary { color: var(--text); border-bottom: 2px solid var(--text-dim); }
+  .rules-body { padding: 0.9rem; display: flex; flex-direction: column; gap: 0.7rem; }
+  .rules-body p { margin: 0; font-size: 0.76rem; color: var(--text-dim); line-height: 1.6; max-width: 80ch; }
+  #rules-yaml {
+    width: 100%;
+    min-height: 18rem;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    padding: 0.7rem;
+    background: var(--bg);
+    color: var(--text);
+    border: 2px solid var(--border);
+    border-radius: 0;
+    tab-size: 2;
+  }
+  .rules-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  #rules-state { font-size: 0.74rem; color: var(--text-dim); }
 
   #loading, #error {
     display: none;
@@ -109,9 +156,10 @@
     padding: 1rem 1.1rem;
     border: 3px solid var(--border);
     font-size: 0.85rem;
+    line-height: 1.6;
   }
   #loading { color: var(--text); background: var(--surface); }
-  #error { color: var(--invert-text); background: var(--text); font-weight: 700; }
+  #error { color: var(--invert-text); background: var(--text); font-weight: 700; white-space: pre-wrap; }
 
   #results { display: none; }
 
@@ -131,7 +179,28 @@
     border-bottom: 3px solid var(--border);
     padding-bottom: 0.65rem;
     margin: 0 0 1.15rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
+  h2 .h2-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+  h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 1.4rem 0 0.7rem;
+  }
+  .section-lead { margin: 0 0 1rem; font-size: 0.8rem; color: var(--text-dim); line-height: 1.6; max-width: 80ch; }
 
   .stats { display: flex; gap: 0.9rem; flex-wrap: wrap; }
   .stat {
@@ -139,6 +208,7 @@
     border: 2px solid var(--border);
     padding: 0.9rem 1.15rem;
     min-width: 108px;
+    flex: 1 1 108px;
   }
   .stat .value {
     font-family: 'Space Grotesk', sans-serif;
@@ -146,26 +216,34 @@
     font-weight: 700;
     display: block;
     line-height: 1.1;
+    font-variant-numeric: tabular-nums;
   }
-  .stat .label {
-    font-size: 0.68rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+  .stat .label { font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* ---------- drift ---------- */
+  .health-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: stretch; margin-bottom: 1.2rem; }
+  .health-box {
+    border: 3px solid var(--border);
+    background: var(--invert-bg);
+    color: var(--invert-text);
+    padding: 0.9rem 1.2rem;
+    min-width: 170px;
   }
+  .health-box .value { font-family: 'Space Grotesk', sans-serif; font-size: 2.4rem; font-weight: 700; line-height: 1; }
+  .health-box .value small { font-size: 0.9rem; }
+  .health-box .label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.35rem; }
+  .health-box.na { background: var(--surface-2); color: var(--text); }
+  .health-meta { flex: 1 1 280px; font-size: 0.78rem; color: var(--text-dim); line-height: 1.7; }
+  .health-meta strong { color: var(--text); font-weight: 500; }
 
-  #health-score { font-weight: 700; font-family: 'Space Grotesk', sans-serif; font-size: 1.05em; }
-
-  ul#violations-list { list-style: none; padding: 0; margin: 0; }
-  ul#violations-list li {
-    margin-bottom: 0.6rem;
-    padding: 0.65rem 0.85rem;
-    font-size: 0.82rem;
-    border: 2px solid var(--border);
+  .chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  .chip {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--text-dim);
+    color: var(--text);
     background: var(--surface-2);
-    word-break: break-word;
   }
-  ul#violations-list li:last-child { margin-bottom: 0; }
 
   .no-violations {
     display: inline-block;
@@ -175,46 +253,173 @@
     font-weight: 700;
     border: 2px solid var(--border);
     font-size: 0.85rem;
+    margin: 0;
   }
 
-  #diagram-container {
-    overflow: auto;
-    max-height: 75vh;
+  .group-card {
     border: 2px solid var(--border);
-    padding: 1rem;
+    background: var(--surface-2);
+    margin-bottom: 1rem;
+  }
+  .group-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.8rem;
+    align-items: center;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .group-head .rule { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.95rem; }
+  .group-head .meta { font-size: 0.72rem; color: var(--text-dim); }
+  .group-body { padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.7rem; }
+
+  .badge {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.5rem;
+    border: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  .badge.high { background: var(--invert-bg); color: var(--invert-text); }
+  .badge.medium { background: var(--surface); color: var(--text); }
+  .badge.low { background: var(--surface); color: var(--text-dim); border-color: var(--text-dim); }
+  .badge.status { border-style: dashed; color: var(--text); background: transparent; }
+
+  ul.edge-list { list-style: none; padding: 0; margin: 0; font-size: 0.78rem; }
+  ul.edge-list li {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--surface);
+    word-break: break-word;
+    line-height: 1.5;
+  }
+  ul.edge-list li:last-child { border-bottom: none; }
+  .edge-more { font-size: 0.72rem; color: var(--text-dim); }
+
+  .explain { border-top: 2px dashed var(--text-faint); padding-top: 0.7rem; display: flex; flex-direction: column; gap: 0.55rem; }
+  .kv { font-size: 0.8rem; line-height: 1.6; }
+  .kv .k {
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-dim);
+    margin-bottom: 0.1rem;
+  }
+  .snippets summary { cursor: pointer; font-size: 0.72rem; color: var(--text-dim); }
+  .snippets pre {
     background: var(--bg);
+    border: 1px solid var(--text-faint);
+    padding: 0.6rem;
+    overflow-x: auto;
+    font-size: 0.72rem;
+    margin: 0.5rem 0 0;
   }
 
-  #documentation-error {
-    display: none;
-    padding: 1rem 1.1rem;
+  .pending {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    border: 2px dashed var(--text-dim);
+    margin: 0;
+  }
+  .pending.active::after { content: '...'; }
+  @media (prefers-reduced-motion: no-preference) {
+    .pending.active::after { animation: dots 1.2s steps(4, end) infinite; content: ''; }
+    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+  }
+  .notice {
+    padding: 0.8rem 1rem;
+    border: 2px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+  .notice ul { margin: 0.35rem 0 0; padding-left: 1.2rem; }
+  .error-box {
+    padding: 0.8rem 1rem;
     border: 3px solid var(--border);
     background: var(--text);
     color: var(--invert-text);
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     margin-bottom: 1rem;
+    word-break: break-word;
   }
 
-  #documentation-warnings {
-    display: none;
-    padding: 1rem 1.1rem;
-    border: 2px solid var(--border);
-    background: var(--surface-2);
-    color: var(--text-dim);
-    font-size: 0.8rem;
-    margin-bottom: 1rem;
-  }
-  #documentation-warnings ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
-  #documentation-warnings li { margin-bottom: 0.3rem; }
+  /* ---------- history ---------- */
+  .chart-wrap { border: 2px solid var(--border); background: var(--bg); padding: 0.6rem 0.4rem 0.2rem; overflow-x: auto; }
+  .chart-wrap svg { display: block; width: 100%; min-width: 520px; height: auto; }
+  .chart-axis { stroke: var(--text-faint); stroke-width: 1; }
+  .chart-grid { stroke: var(--surface-2); stroke-width: 1; }
+  .chart-label { fill: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .chart-line { fill: none; stroke: var(--text); stroke-width: 2.5; }
+  .chart-area { fill: rgba(242, 242, 242, 0.06); stroke: none; }
+  .chart-point { cursor: pointer; outline: none; }
+  .chart-point circle { fill: var(--bg); stroke: var(--text); stroke-width: 2.5; }
+  .chart-point.na circle { stroke: var(--text-faint); stroke-dasharray: 2 2; }
+  .chart-point.selected circle { fill: var(--text); }
+  .chart-point:hover circle { fill: var(--text-dim); }
+  .chart-legend { font-size: 0.72rem; color: var(--text-dim); margin: 0.6rem 0 0; line-height: 1.6; }
 
+  .snapshot-panel { margin-top: 1rem; border: 2px solid var(--text-dim); padding: 0.9rem; }
+  .snapshot-panel .meta { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.7rem; line-height: 1.6; }
+  .snapshot-panel .meta strong { color: var(--text); font-weight: 500; }
+  .diagram-box { overflow: auto; max-height: 60vh; border: 2px solid var(--border); padding: 1rem; background: var(--bg); }
+
+  .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+  .list-box { border: 2px solid var(--border); background: var(--surface-2); padding: 0.8rem 0.9rem; }
+  .list-box ol, .list-box ul { margin: 0; padding-left: 1.2rem; font-size: 0.78rem; line-height: 1.7; }
+  .timeline { list-style: none; padding: 0 !important; }
+  .timeline li { display: grid; grid-template-columns: 5.6rem 4.6rem 1fr; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid var(--surface); }
+  .timeline li:last-child { border-bottom: none; }
+  .timeline .when { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .timeline .what { word-break: break-word; }
+  .timeline .who { color: var(--text-dim); }
+
+  #diagram-container { overflow: auto; max-height: 75vh; border: 2px solid var(--border); padding: 1rem; background: var(--bg); }
+
+  /* ---------- decisions ---------- */
+  .adr-card { border: 3px solid var(--border); background: var(--surface-2); margin-bottom: 1.4rem; box-shadow: 4px 4px 0 0 var(--border); }
+  .adr-head { padding: 0.9rem 1rem; border-bottom: 2px solid var(--border); }
+  .adr-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.05rem; margin: 0 0 0.5rem; text-wrap: balance; }
+  .adr-tags { display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; font-size: 0.72rem; color: var(--text-dim); }
+  .adr-body { padding: 0.9rem 1rem; display: grid; gap: 0.85rem; }
+  .adr-detected { font-size: 0.74rem; color: var(--text-dim); line-height: 1.6; }
+  .inference {
+    border: 2px dashed var(--text);
+    padding: 0.7rem 0.8rem;
+    background: var(--surface);
+  }
+  .inference .k::after { content: ' — inferred, not confirmed intent'; text-transform: none; letter-spacing: 0; }
+  .evidence-list { list-style: none; margin: 0; padding: 0; font-size: 0.76rem; }
+  .evidence-list li {
+    display: grid;
+    grid-template-columns: 4.8rem 1fr 5.5rem;
+    gap: 0.6rem;
+    align-items: start;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--surface);
+  }
+  .evidence-list li:last-child { border-bottom: none; }
+  .evidence-list .msg { word-break: break-word; line-height: 1.5; }
+  .evidence-list .shows { display: block; color: var(--text-dim); margin-top: 0.15rem; }
+  .relbar { height: 0.45rem; border: 1px solid var(--text-dim); margin-top: 0.35rem; }
+  .relbar span { display: block; height: 100%; background: var(--text); }
+  .rel-num { font-size: 0.7rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .confidence { display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; }
+  .adr-validation summary { cursor: pointer; font-size: 0.72rem; color: var(--text-dim); }
+  .adr-validation pre { font-size: 0.7rem; background: var(--bg); padding: 0.6rem; border: 1px solid var(--text-faint); overflow-x: auto; }
+
+  /* ---------- markdown ---------- */
   .markdown-body { line-height: 1.65; font-size: 0.92rem; }
   .markdown-body :first-child { margin-top: 0; }
-  .markdown-body h2 {
-    font-size: 1rem;
-    border-bottom: 2px solid var(--border);
-    margin-top: 1.85rem;
-  }
+  .markdown-body h2 { font-size: 1rem; border-bottom: 2px solid var(--border); margin-top: 1.85rem; display: block; }
   .markdown-body a { color: var(--text); }
   .markdown-body code {
     background: var(--surface-2);
@@ -223,24 +428,10 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.85em;
   }
-  .markdown-body pre {
-    background: var(--surface-2);
-    border: 2px solid var(--border);
-    padding: 0.9rem;
-    overflow-x: auto;
-  }
+  .markdown-body pre { background: var(--surface-2); border: 2px solid var(--border); padding: 0.9rem; overflow-x: auto; }
   .markdown-body pre code { border: none; padding: 0; background: none; }
-  .markdown-body table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1rem 0;
-    font-size: 0.85em;
-  }
-  .markdown-body th, .markdown-body td {
-    border: 2px solid var(--border);
-    padding: 0.5rem 0.75rem;
-    text-align: left;
-  }
+  .markdown-body table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.85em; }
+  .markdown-body th, .markdown-body td { border: 2px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
   .markdown-body th {
     background: var(--surface-2);
     font-family: 'Space Grotesk', sans-serif;
@@ -248,19 +439,7 @@
     font-size: 0.78em;
     letter-spacing: 0.04em;
   }
-  .markdown-body blockquote {
-    border-left: 3px solid var(--border);
-    margin: 1rem 0;
-    padding: 0.2rem 0 0.2rem 1rem;
-    color: var(--text-dim);
-  }
-
-  [hidden] { display: none !important; }
-
-  button:focus-visible, textarea:focus-visible, summary:focus-visible {
-    outline: 3px solid var(--text);
-    outline-offset: 3px;
-  }
+  .markdown-body blockquote { border-left: 3px solid var(--border); margin: 1rem 0; padding: 0.2rem 0 0.2rem 1rem; color: var(--text-dim); }
 
   /* ---------- Ask the repo (chat drawer) ---------- */
   .ask-toggle {
@@ -269,7 +448,6 @@
     bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
     z-index: 40;
   }
-
   .ask-panel {
     position: fixed;
     top: 0;
@@ -282,11 +460,7 @@
     border-left: 3px solid var(--border);
     z-index: 50;
   }
-
-  @media (min-width: 1100px) {
-    body.ask-open { margin-right: 480px; margin-left: auto; }
-  }
-
+  @media (min-width: 1100px) { body.ask-open { margin-right: 480px; margin-left: auto; } }
   .ask-header {
     display: flex;
     justify-content: space-between;
@@ -296,38 +470,11 @@
     background: var(--surface);
     border-bottom: 3px solid var(--border);
   }
-  .ask-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .ask-sub {
-    margin-top: 0.3rem;
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    word-break: break-all;
-  }
-  .ask-close {
-    padding: 0.3rem 0.75rem;
-    font-size: 1rem;
-    box-shadow: 3px 3px 0 0 var(--border);
-  }
-
-  .ask-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem 1.1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-  }
-  .ask-intro {
-    font-size: 0.78rem;
-    line-height: 1.6;
-    color: var(--text-dim);
-    margin: 0;
-  }
+  .ask-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .ask-sub { margin-top: 0.3rem; font-size: 0.72rem; color: var(--text-dim); word-break: break-all; }
+  .ask-close { padding: 0.3rem 0.75rem; font-size: 1rem; box-shadow: 3px 3px 0 0 var(--border); }
+  .ask-messages { flex: 1; overflow-y: auto; padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  .ask-intro { font-size: 0.78rem; line-height: 1.6; color: var(--text-dim); margin: 0; }
   .ask-suggestions { display: flex; flex-direction: column; gap: 0.55rem; }
   .ask-chip {
     text-align: left;
@@ -342,7 +489,6 @@
     border: 2px solid var(--border);
     box-shadow: 3px 3px 0 0 var(--border);
   }
-
   .ask-msg-user {
     align-self: flex-end;
     max-width: 85%;
@@ -354,46 +500,24 @@
     white-space: pre-wrap;
     word-break: break-word;
   }
-  .ask-msg-bot {
-    padding: 0.85rem 0.95rem;
-    background: var(--surface);
-    border: 2px solid var(--border);
-  }
+  .ask-msg-bot { padding: 0.85rem 0.95rem; background: var(--surface); border: 2px solid var(--border); }
   .ask-msg-bot .markdown-body { font-size: 0.84rem; line-height: 1.6; word-break: break-word; }
   .ask-msg-bot .markdown-body table { display: block; overflow-x: auto; }
   .ask-msg-bot .markdown-body :last-child { margin-bottom: 0; }
-
-  .ask-evidence {
-    margin-top: 0.8rem;
-    padding-top: 0.6rem;
-    border-top: 2px dashed var(--text-dim);
-    font-size: 0.74rem;
-    color: var(--text-dim);
-  }
-  .ask-evidence summary {
-    cursor: pointer;
-    font-family: 'Space Grotesk', sans-serif;
+  .intent-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+  .intent-tags span {
+    font-size: 0.64rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text);
+    letter-spacing: 0.06em;
+    border: 1px solid var(--text-dim);
+    color: var(--text-dim);
+    padding: 0.1rem 0.4rem;
   }
+  .ask-evidence { margin-top: 0.8rem; padding-top: 0.6rem; border-top: 2px dashed var(--text-dim); font-size: 0.74rem; color: var(--text-dim); }
+  .ask-evidence summary { cursor: pointer; font-family: 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text); }
   .ask-evidence ol { margin: 0.5rem 0 0; padding-left: 1.25rem; }
   .ask-evidence li { margin-bottom: 0.4rem; word-break: break-word; line-height: 1.5; }
   .ask-evidence code { color: var(--text); }
-
-  .ask-pending {
-    padding: 0.6rem 0.8rem;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    border: 2px dashed var(--text-dim);
-  }
-  .ask-pending::after { content: '...'; }
-  @media (prefers-reduced-motion: no-preference) {
-    .ask-pending::after { animation: ask-dots 1.2s steps(4, end) infinite; content: ''; }
-    @keyframes ask-dots {
-      0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; }
-    }
-  }
   .ask-error {
     padding: 0.6rem 0.8rem;
     font-size: 0.8rem;
@@ -403,7 +527,6 @@
     border: 2px solid var(--border);
     word-break: break-word;
   }
-
   .ask-form {
     display: flex;
     gap: 0.6rem;
@@ -425,47 +548,101 @@
   #ask-input::placeholder { color: var(--text-dim); }
   #ask-input:focus { background: var(--surface-2); }
   .ask-form button { padding: 0.6rem 1rem; box-shadow: 3px 3px 0 0 var(--border); }
+
+  @media (max-width: 560px) {
+    section { padding: 1.1rem; }
+    .timeline li { grid-template-columns: 5rem 1fr; }
+    .timeline .who { grid-column: 2; }
+    .evidence-list li { grid-template-columns: 4.6rem 1fr; }
+    .evidence-list li > :last-child { grid-column: 2; }
+  }
 </style>
 </head>
 <body>
   <h1>RepoMind AI</h1>
-  <p class="subtitle">Paste a public GitHub repo URL to analyze its structure, architecture drift, and module dependencies.</p>
+  <p class="subtitle">Paste a public GitHub repository. RepoMind builds a knowledge graph of its structure and history, checks it against your architecture rules, traces how its health drifted over time, and reconstructs the decisions behind it — every claim backed by evidence you can inspect.</p>
 
   <div class="input-row">
-    <input id="repo-url" type="text" placeholder="https://github.com/user/repo" />
+    <input id="repo-url" type="text" placeholder="https://github.com/user/repo" aria-label="GitHub repository URL" />
     <button id="submit-btn">Analyze</button>
   </div>
 
-  <div id="loading">Cloning and analyzing repository&hellip; this can take a little while for larger repos.</div>
-  <div id="error"></div>
+  <details class="rules-panel" id="rules-panel">
+    <summary>Architecture rules</summary>
+    <div class="rules-body">
+      <p>Rules are data. <code>layers</code> maps folders and files to layers; each rule forbids calls or imports from one layer to another. Edit them and re-run the analysis to check this repository against your own architecture.</p>
+      <textarea id="rules-yaml" spellcheck="false" aria-label="Architecture rules YAML"></textarea>
+      <div class="rules-actions">
+        <button type="button" class="secondary" id="rules-reset">Reset to default</button>
+        <span id="rules-state">Default rules</span>
+      </div>
+    </div>
+  </details>
+
+  <div id="loading">Cloning the repository, parsing it, building the graph and mining its history&hellip;</div>
+  <div id="error" role="alert"></div>
 
   <div id="results">
     <section>
-      <h2>Parse Summary</h2>
+      <h2>Overview <span class="h2-note" id="overview-note"></span></h2>
       <div class="stats">
         <div class="stat"><span class="value" id="stat-files">0</span><span class="label">files parsed</span></div>
-        <div class="stat"><span class="value" id="stat-classes">0</span><span class="label">classes found</span></div>
-        <div class="stat"><span class="value" id="stat-functions">0</span><span class="label">functions found</span></div>
-        <div class="stat"><span class="value" id="stat-nodes">0</span><span class="label">graph nodes loaded</span></div>
+        <div class="stat"><span class="value" id="stat-classes">0</span><span class="label">classes</span></div>
+        <div class="stat"><span class="value" id="stat-functions">0</span><span class="label">functions</span></div>
+        <div class="stat"><span class="value" id="stat-nodes">0</span><span class="label">graph nodes</span></div>
+        <div class="stat"><span class="value" id="stat-commits">0</span><span class="label">commits mined</span></div>
+        <div class="stat"><span class="value" id="stat-authors">0</span><span class="label">contributors</span></div>
       </div>
     </section>
 
     <section>
-      <h2>Architecture Drift</h2>
-      <p>Health score: <span id="health-score">-</span> / 100</p>
+      <h2>Architecture Drift <span class="h2-note">deterministic rule engine + AI explanations</span></h2>
+      <div class="health-row">
+        <div class="health-box" id="health-box">
+          <div class="value" id="health-score">-</div>
+          <div class="label">architecture health</div>
+        </div>
+        <div class="health-meta" id="health-meta"></div>
+      </div>
+      <div id="drift-notice"></div>
       <div id="violations"></div>
     </section>
 
     <section>
-      <h2>Module Dependency Diagram</h2>
+      <h2>Drift Over Time <span class="h2-note" id="trend-note"></span></h2>
+      <p class="section-lead">Health at evenly spaced code-changing commits along the main history (the last point is HEAD). Select a point to see the architecture as it was then, rebuilt from the temporal graph.</p>
+      <div class="chart-wrap" id="trend-chart"></div>
+      <p class="chart-legend" id="trend-legend"></p>
+      <div class="snapshot-panel" id="snapshot-panel" hidden>
+        <div class="meta" id="snapshot-meta"></div>
+        <div class="diagram-box" id="snapshot-diagram"></div>
+      </div>
+      <div class="two-col" style="margin-top:1.2rem">
+        <div class="list-box">
+          <h3 style="margin-top:0">Top contributors</h3>
+          <ol id="contributors"></ol>
+        </div>
+        <div class="list-box">
+          <h3 style="margin-top:0">Recent commits</h3>
+          <ul class="timeline" id="timeline"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Module Dependency Diagram <span class="h2-note">current state (HEAD)</span></h2>
       <div id="diagram-container"></div>
     </section>
 
     <section>
-      <h2>Documentation</h2>
-      <div id="documentation-error"></div>
-      <div id="documentation-warnings"></div>
-      <div id="documentation-content" class="markdown-body"></div>
+      <h2>Architecture Decisions <span class="h2-note">reconstructed from history</span></h2>
+      <p class="section-lead">Decision points are detected deterministically (dependencies adopted or replaced, infrastructure and module groups introduced, violations introduced or resolved). Nearby commits are ranked by relevance = 0.3·time + 0.45·graph + 0.25·text, and the AI writes each record only from that evidence. Reasons are inferred, never confirmed intent.</p>
+      <div id="decisions"></div>
+    </section>
+
+    <section>
+      <h2>Documentation <span class="h2-note">AI-written, grounded in the graph</span></h2>
+      <div id="documentation"></div>
     </section>
   </div>
 
@@ -480,11 +657,11 @@
       <button id="ask-close" class="ask-close" type="button" aria-label="Close">&times;</button>
     </div>
     <div id="ask-messages" class="ask-messages" aria-live="polite">
-      <p class="ask-intro">Answers come from the knowledge graph, the architecture rule engine and the repo's source. Each answer lists the exact queries it used.</p>
+      <p class="ask-intro">Ask about structure, architecture rules, history, or why something was decided. Answers come from the knowledge graph, the rule engine, the commit history and reconstructed decision records, and each lists the exact queries it used.</p>
       <div id="ask-suggestions" class="ask-suggestions"></div>
     </div>
     <form id="ask-form" class="ask-form">
-      <textarea id="ask-input" rows="2" maxlength="2000" placeholder="Ask about modules, dependencies, functions&hellip;" aria-label="Your question"></textarea>
+      <textarea id="ask-input" rows="2" maxlength="2000" placeholder="Ask about modules, history, decisions&hellip;" aria-label="Your question"></textarea>
       <button id="ask-send" type="submit">Send</button>
     </form>
   </aside>
@@ -493,6 +670,7 @@
   mermaid.initialize({
     startOnLoad: false,
     theme: 'base',
+    maxTextSize: 200000,
     themeVariables: {
       background: '#0a0a0a',
       primaryColor: '#202020',
@@ -510,15 +688,97 @@
     },
   });
 
-  const btn = document.getElementById('submit-btn');
-  const urlInput = document.getElementById('repo-url');
-  const loadingEl = document.getElementById('loading');
-  const errorEl = document.getElementById('error');
-  const resultsEl = document.getElementById('results');
+  const $ = (id) => document.getElementById(id);
+  const btn = $('submit-btn');
+  const urlInput = $('repo-url');
+  const loadingEl = $('loading');
+  const errorEl = $('error');
+  const resultsEl = $('results');
+
+  let current = null;        // the analysis currently shown
+  let defaultRules = null;
+  let mermaidCounter = 0;
 
   btn.addEventListener('click', analyze);
   urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') analyze(); });
 
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s == null ? '' : String(s);
+    return div.innerHTML;
+  }
+
+  function shortDate(iso) { return iso ? iso.slice(0, 10) : ''; }
+
+  function commitLink(sha, label) {
+    const text = escapeHtml(label || (sha || '').slice(0, 7));
+    const m = current && current.repo_url.match(/^https?:\/\/github\.com\/([^/]+\/[^/.]+)/i);
+    if (!m || !sha) return `<code>${text}</code>`;
+    return `<a href="https://github.com/${m[1]}/commit/${encodeURIComponent(sha)}" target="_blank" rel="noopener"><code>${text}</code></a>`;
+  }
+
+  async function errorDetail(resp, fallback) {
+    try {
+      const body = await resp.json();
+      if (body && typeof body.detail === 'string') return body.detail;
+    } catch (e) { /* not JSON */ }
+    return `${fallback} (HTTP ${resp.status})`;
+  }
+
+  async function postJson(path, body) {
+    const resp = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) throw new Error(await errorDetail(resp, 'Request failed'));
+    return resp.json();
+  }
+
+  function pending(text, active = true) {
+    return `<p class="pending${active ? ' active' : ''}">${escapeHtml(text)}</p>`;
+  }
+
+  async function renderMermaid(container, source) {
+    container.innerHTML = '';
+    const { svg } = await mermaid.render(`mmd-${++mermaidCounter}`, source);
+    container.innerHTML = svg;
+    // Mermaid sets width="100%", which squeezes a large diagram to the
+    // container's width; render at natural size and let the box scroll.
+    const svgEl = container.querySelector('svg');
+    if (svgEl) {
+      const vb = svgEl.viewBox && svgEl.viewBox.baseVal;
+      if (vb && vb.width && vb.height) {
+        svgEl.setAttribute('width', Math.ceil(vb.width));
+        svgEl.setAttribute('height', Math.ceil(vb.height));
+      }
+      svgEl.style.maxWidth = 'none';
+    }
+  }
+
+  // ---------- rules editor ----------
+  const rulesPanel = $('rules-panel');
+  const rulesText = $('rules-yaml');
+  const rulesState = $('rules-state');
+
+  async function ensureDefaultRules() {
+    if (defaultRules !== null) return;
+    const resp = await fetch('/rules/default');
+    defaultRules = await resp.text();
+    if (!rulesText.value) rulesText.value = defaultRules;
+  }
+  rulesPanel.addEventListener('toggle', () => { if (rulesPanel.open) ensureDefaultRules(); });
+  rulesText.addEventListener('input', updateRulesState);
+  $('rules-reset').addEventListener('click', () => { rulesText.value = defaultRules || ''; updateRulesState(); });
+
+  function customRules() {
+    return defaultRules !== null && rulesText.value.trim() && rulesText.value !== defaultRules ? rulesText.value : null;
+  }
+  function updateRulesState() {
+    rulesState.textContent = customRules() ? 'Custom rules — used on the next analysis' : 'Default rules';
+  }
+
+  // ---------- analysis ----------
   async function analyze() {
     const repoUrl = urlInput.value.trim();
     if (!repoUrl) return;
@@ -529,21 +789,17 @@
     loadingEl.style.display = 'block';
     if (!askPanel.hidden) closeAsk();
     askToggle.hidden = true;
+    current = null;
 
     try {
-      const resp = await fetch('/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_url: repoUrl }),
-      });
-
-      if (!resp.ok) {
-        throw new Error(`Analysis failed (HTTP ${resp.status})`);
-      }
-
-      const data = await resp.json();
+      const body = { repo_url: repoUrl };
+      const rules = customRules();
+      if (rules) body.rules_yaml = rules;
+      const data = await postJson('/analyze', body);
+      current = data;
       await renderResults(data);
       resetChat(repoUrl);
+      runGenerativeSections(data);
     } catch (err) {
       errorEl.textContent = err.message || 'Analysis failed.';
       errorEl.style.display = 'block';
@@ -554,95 +810,330 @@
   }
 
   async function renderResults(data) {
-    document.getElementById('stat-files').textContent = data.files_parsed;
-    document.getElementById('stat-classes').textContent = data.classes_found;
-    document.getElementById('stat-functions').textContent = data.functions_found;
-    document.getElementById('stat-nodes').textContent = data.nodes_loaded;
+    const h = data.history || {};
+    $('stat-files').textContent = data.files_parsed;
+    $('stat-classes').textContent = data.classes_found;
+    $('stat-functions').textContent = data.functions_found;
+    $('stat-nodes').textContent = data.nodes_loaded;
+    $('stat-commits').textContent = h.commits ?? 0;
+    $('stat-authors').textContent = (h.contributors || []).length;
+    $('overview-note').textContent = `${data.head_sha ? data.head_sha.slice(0, 7) + ' · ' : ''}analyzed in ${data.seconds}s`;
+    $('overview-note').title = Object.entries(data.timings || {}).map(([k, v]) => `${k.replace('_', ' ')} ${v}s`).join(' · ');
 
-    document.getElementById('health-score').textContent = data.health_score;
+    renderDrift(data);
+    renderHistory(h);
+    await renderMermaid($('diagram-container'), data.mermaid_diagram);
 
-    const violationsEl = document.getElementById('violations');
-    if (!data.violations || data.violations.length === 0) {
-      violationsEl.innerHTML = '<p class="no-violations">No violations found.</p>';
-    } else {
-      const items = data.violations.map(v =>
-        `<li>[${escapeHtml(v.rule)}] severity=${v.severity}: ${escapeHtml(v.caller)} &rarr; ${escapeHtml(v.callee)}</li>`
-      ).join('');
-      violationsEl.innerHTML = `<ul id="violations-list">${items}</ul>`;
-    }
-
-    const container = document.getElementById('diagram-container');
-    container.innerHTML = '';
-    const { svg } = await mermaid.render('diagram-svg', data.mermaid_diagram);
-    container.innerHTML = svg;
-
-    // Mermaid sets width="100%" on the SVG, which shrinks a wide/dense
-    // diagram to fit the container's pixel width instead of rendering at a
-    // readable natural size — this is what makes a large diagram look
-    // "squeezed." Force the SVG back to its natural size (from its own
-    // viewBox) and let the container scroll instead of the diagram shrink.
-    const svgEl = container.querySelector('svg');
-    if (svgEl) {
-      const viewBox = svgEl.viewBox && svgEl.viewBox.baseVal;
-      if (viewBox && viewBox.width && viewBox.height) {
-        svgEl.setAttribute('width', Math.ceil(viewBox.width));
-        svgEl.setAttribute('height', Math.ceil(viewBox.height));
-      }
-      svgEl.style.maxWidth = 'none';
-    }
-
-    const docErrorEl = document.getElementById('documentation-error');
-    const docWarningsEl = document.getElementById('documentation-warnings');
-    const docContentEl = document.getElementById('documentation-content');
-    docWarningsEl.style.display = 'none';
-    docWarningsEl.innerHTML = '';
-
-    if (data.documentation_error != null) {
-      docErrorEl.textContent = `Documentation generation failed: ${data.documentation_error || 'unknown error'}`;
-      docErrorEl.style.display = 'block';
-      docContentEl.innerHTML = '';
-    } else if (data.documentation) {
-      docErrorEl.style.display = 'none';
-      docContentEl.innerHTML = DOMPurify.sanitize(marked.parse(data.documentation));
-
-      if (data.documentation_warnings && data.documentation_warnings.length > 0) {
-        const items = data.documentation_warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('');
-        docWarningsEl.innerHTML = `<strong>Partial AI coverage:</strong><ul>${items}</ul>`;
-        docWarningsEl.style.display = 'block';
-      }
-    } else {
-      docErrorEl.style.display = 'none';
-      docContentEl.innerHTML = '';
-    }
-
+    $('decisions').innerHTML = pending('Waiting for the drift explanations to finish', false);
+    $('documentation').innerHTML = pending('Waiting for the decision records to finish', false);
     resultsEl.style.display = 'block';
   }
 
-  function escapeHtml(s) {
-    const div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
+  async function runGenerativeSections(data) {
+    // Sequential, so the sections don't compete for the LLM's rate limit.
+    const id = data.analysis_id;
+    if (data.violations.length) await loadExplanations(id);
+    if (!current || current.analysis_id !== id) return;
+    await loadDecisions(id);
+    if (!current || current.analysis_id !== id) return;
+    await loadDocumentation(id);
+  }
+
+  // ---------- drift ----------
+  function groupViolations(violations) {
+    const groups = new Map();
+    for (const v of violations) {
+      if (!groups.has(v.rule)) groups.set(v.rule, { rule: v.rule, severity: v.severity, edge: v.edge, violations: [] });
+      groups.get(v.rule).violations.push(v);
+    }
+    return [...groups.values()].sort((a, b) => b.severity - a.severity || b.violations.length - a.violations.length);
+  }
+
+  function renderDrift(data) {
+    const box = $('health-box');
+    const na = data.health_score == null;
+    box.classList.toggle('na', na);
+    $('health-score').innerHTML = na ? 'N/A' : `${data.health_score}<small> / 100</small>`;
+
+    const layers = Object.entries(data.layers || {}).sort((a, b) => b[1] - a[1]);
+    const checked = Object.values(data.rule_checks || {}).reduce((a, b) => a + b, 0);
+    $('health-meta').innerHTML = `
+      ${na ? '<strong>Not scored:</strong> no layer-tagged module depends on another, so the rules had nothing to judge. Adjust the layer patterns in Architecture rules to match this repository.<br>' : ''}
+      <strong>${data.violations.length}</strong> violation${data.violations.length === 1 ? '' : 's'} across
+      <strong>${checked}</strong> judged dependencies · weighted violations <strong>${data.weighted_violations}</strong> ·
+      legacy score <strong>${data.health_score_legacy}</strong>
+      <div class="chips">${layers.map(([l, n]) => `<span class="chip">${escapeHtml(l)} · ${n}</span>`).join('')}</div>`;
+
+    $('drift-notice').innerHTML = '';
+    const el = $('violations');
+    if (!data.violations.length) {
+      el.innerHTML = '<p class="no-violations">No violations found.</p>';
+      return;
+    }
+    el.innerHTML = groupViolations(data.violations).map((g) => groupCard({
+      rule: g.rule, severity: g.severity, edge: g.edge, occurrences: g.violations.length,
+      violations: g.violations, explanation: null,
+    }, true)).join('');
+  }
+
+  function groupCard(g, waiting) {
+    const shown = g.violations.slice(0, 8);
+    const more = g.violations.length - shown.length;
+    const priority = g.priority
+      ? `<span class="badge ${g.priority.toLowerCase()}">${escapeHtml(g.priority)} priority</span><span class="meta">rank ${g.rank} · score ${g.score}</span>`
+      : '';
+    const intro = g.introduced ? ` · first seen ${commitLink(null, g.introduced.short)} ${shortDate(g.introduced.date)}` : '';
+    let explanation = '';
+    if (g.explanation) {
+      const e = g.explanation;
+      explanation = `<div class="explain">
+        ${e.fallback ? '<div class="kv"><span class="k">Facts only</span>No AI explanation could be generated for this group.</div>' : ''}
+        <div class="kv"><span class="k">What is happening</span>${escapeHtml(e.summary)}</div>
+        ${e.why_it_matters ? `<div class="kv"><span class="k">Why it matters</span>${escapeHtml(e.why_it_matters)}</div>` : ''}
+        ${e.suggested_fix ? `<div class="kv"><span class="k">Suggested fix</span>${escapeHtml(e.suggested_fix)}</div>` : ''}
+        ${e.caveat ? `<div class="kv"><span class="k">Caveat</span>${escapeHtml(e.caveat)}</div>` : ''}
+        ${(e.snippets || []).length ? `<details class="snippets"><summary>Source evidence (${e.snippets.length})</summary>${e.snippets.map((s) => `<pre>${escapeHtml(s)}</pre>`).join('')}</details>` : ''}
+      </div>`;
+    } else if (waiting) {
+      explanation = pending('Explaining this rule group');
+    }
+    return `<div class="group-card">
+      <div class="group-head">
+        <span class="rule">${escapeHtml(g.rule)}</span>${priority}
+        <span class="meta">severity ${g.severity} · ${escapeHtml(g.edge)} · ${g.occurrences} occurrence${g.occurrences === 1 ? '' : 's'}${intro}</span>
+      </div>
+      <div class="group-body">
+        <ul class="edge-list">${shown.map((v) => `<li>${escapeHtml(v.caller)} &rarr; ${escapeHtml(v.callee)}</li>`).join('')}</ul>
+        ${more > 0 ? `<span class="edge-more">and ${more} more</span>` : ''}
+        ${explanation}
+      </div>
+    </div>`;
+  }
+
+  async function loadExplanations(id) {
+    try {
+      const data = await postJson('/violations/explain', { analysis_id: id });
+      if (!current || current.analysis_id !== id) return;
+      $('violations').innerHTML = (data.groups || []).map((g) => groupCard(g, false)).join('');
+      const warnings = data.warnings || [];
+      $('drift-notice').innerHTML = warnings.length
+        ? `<div class="notice">Some explanations are incomplete:<ul>${warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>` : '';
+    } catch (err) {
+      if (!current || current.analysis_id !== id) return;
+      $('violations').querySelectorAll('.pending').forEach((p) => p.remove());
+      $('drift-notice').innerHTML = `<div class="error-box">Couldn't explain the violations: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // ---------- history ----------
+  function renderHistory(h) {
+    const snaps = h.snapshots || [];
+    $('trend-note').textContent = h.commits
+      ? `${h.commits} commits · ${shortDate(h.first_commit)} → ${shortDate(h.last_commit)}${h.truncated ? ' · older history capped' : ''}`
+      : 'no history';
+    renderTrendChart(snaps);
+    $('snapshot-panel').hidden = true;
+
+    $('contributors').innerHTML = (h.contributors || []).slice(0, 8)
+      .map((c) => `<li>${escapeHtml(c.name)} — ${c.commits} commit${c.commits === 1 ? '' : 's'}</li>`).join('')
+      || '<li>No history mined.</li>';
+    $('timeline').innerHTML = (h.timeline || []).map((c) => `<li>
+        <span class="when">${shortDate(c.date)}</span>
+        <span>${commitLink(c.sha, c.short)}</span>
+        <span class="what">${escapeHtml(c.subject)}<br><span class="who">${escapeHtml(c.author)} · ${c.files} file${c.files === 1 ? '' : 's'}</span></span>
+      </li>`).join('') || '<li>No commits.</li>';
+  }
+
+  function renderTrendChart(snaps) {
+    const wrap = $('trend-chart');
+    if (!snaps.length) { wrap.innerHTML = pending('No history snapshots.', false); $('trend-legend').textContent = ''; return; }
+    const W = 680, H = 250, L = 46, R = 18, T = 16, B = 58;
+    const x = (i) => snaps.length === 1 ? (L + (W - R)) / 2 : L + (i * (W - L - R)) / (snaps.length - 1);
+    const y = (v) => T + (1 - v / 100) * (H - T - B);
+    const svg = [];
+    svg.push(`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Architecture health over time">`);
+    for (const v of [0, 25, 50, 75, 100]) {
+      svg.push(`<line class="chart-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`);
+      svg.push(`<text class="chart-label" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`);
+    }
+    svg.push(`<line class="chart-axis" x1="${L}" x2="${L}" y1="${T}" y2="${H - B}"/>`);
+    svg.push(`<line class="chart-axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>`);
+
+    // Line segments, broken where health is not scored.
+    let seg = [];
+    const flush = () => {
+      if (seg.length > 1) {
+        const d = seg.map(([px, py], k) => `${k ? 'L' : 'M'}${px},${py}`).join(' ');
+        svg.push(`<path class="chart-area" d="${d} L${seg[seg.length - 1][0]},${H - B} L${seg[0][0]},${H - B} Z"/>`);
+        svg.push(`<path class="chart-line" d="${d}"/>`);
+      }
+      seg = [];
+    };
+    snaps.forEach((s, i) => { if (s.health == null) flush(); else seg.push([x(i), y(s.health)]); });
+    flush();
+
+    // Date labels: keep them at least 64px apart, always including the last one.
+    const MIN_LABEL_GAP = 64;
+    const labelled = [];
+    snaps.forEach((s, i) => {
+      if (!labelled.length || x(i) - x(labelled[labelled.length - 1]) >= MIN_LABEL_GAP) labelled.push(i);
+    });
+    const last = snaps.length - 1;
+    if (labelled[labelled.length - 1] !== last) {
+      if (x(last) - x(labelled[labelled.length - 1]) < MIN_LABEL_GAP) labelled.pop();
+      labelled.push(last);
+    }
+    snaps.forEach((s, i) => {
+      const na = s.health == null;
+      const cy = na ? y(0) : y(s.health);
+      const title = `Snapshot ${s.idx} · ${s.short} · ${shortDate(s.date)} · health ${na ? 'not scored' : s.health} · ${s.violations} violations · ${s.modules} modules`;
+      svg.push(`<g class="chart-point${na ? ' na' : ''}" data-idx="${s.idx}" tabindex="0" role="button" aria-label="${escapeHtml(title)}">
+        <title>${escapeHtml(title)}</title><circle cx="${x(i)}" cy="${cy}" r="6"/></g>`);
+      if (na) svg.push(`<text class="chart-label" x="${x(i)}" y="${cy - 11}" text-anchor="middle">n/a</text>`);
+      svg.push(`<text class="chart-label" x="${x(i)}" y="${H - B + 16}" text-anchor="middle">${s.violations}</text>`);
+      if (labelled.includes(i)) {
+        const anchor = i === last && snaps.length > 1 ? 'end' : i === 0 && snaps.length > 1 ? 'start' : 'middle';
+        const lx = anchor === 'end' ? x(i) + 6 : anchor === 'start' ? x(i) - 6 : x(i);
+        svg.push(`<text class="chart-label" x="${lx}" y="${H - B + 34}" text-anchor="${anchor}">${shortDate(s.date).slice(0, 7)}</text>`);
+      }
+    });
+    svg.push(`<text class="chart-label" x="${L - 8}" y="${H - B + 16}" text-anchor="end">viol.</text>`);
+    svg.push('</svg>');
+    wrap.innerHTML = svg.join('');
+
+    const scored = snaps.filter((s) => s.health != null);
+    $('trend-legend').textContent = scored.length
+      ? `Health from ${scored[0].health} to ${scored[scored.length - 1].health} across ${snaps.length} snapshots. Numbers under the axis are violation counts; points marked n/a had nothing for the rules to judge.`
+      : 'No snapshot could be scored with the current rules (no layer-tagged dependencies).';
+
+    wrap.querySelectorAll('.chart-point').forEach((g) => {
+      const open = () => loadSnapshot(Number(g.dataset.idx));
+      g.addEventListener('click', open);
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
+  }
+
+  async function loadSnapshot(idx) {
+    if (!current) return;
+    const id = current.analysis_id;
+    document.querySelectorAll('.chart-point').forEach((g) => g.classList.toggle('selected', Number(g.dataset.idx) === idx));
+    const panel = $('snapshot-panel');
+    panel.hidden = false;
+    $('snapshot-meta').innerHTML = pending('Rebuilding the architecture at this snapshot');
+    $('snapshot-diagram').innerHTML = '';
+    try {
+      const resp = await fetch(`/history/snapshot/${idx}?analysis_id=${encodeURIComponent(id)}`);
+      if (!resp.ok) throw new Error(await errorDetail(resp, 'Snapshot request failed'));
+      const s = await resp.json();
+      if (!current || current.analysis_id !== id) return;
+      $('snapshot-meta').innerHTML = `<strong>Snapshot ${s.idx}</strong> · ${commitLink(null, s.short)} · ${shortDate(s.date)} — ${escapeHtml(s.subject)}<br>
+        health <strong>${s.health ?? 'not scored'}</strong> · ${s.violations.length} violation${s.violations.length === 1 ? '' : 's'} ·
+        ${s.modules} modules · ${s.imports} module dependencies (folder level)`;
+      if (s.modules) await renderMermaid($('snapshot-diagram'), s.mermaid_diagram);
+      else $('snapshot-diagram').innerHTML = pending('No source modules at this commit.', false);
+    } catch (err) {
+      $('snapshot-meta').innerHTML = `<div class="error-box">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // ---------- decisions ----------
+  const KIND_LABEL = {
+    dependency_replace: 'dependency replaced', dependency_change: 'dependency change', initial_stack: 'initial stack',
+    infrastructure: 'infrastructure', structure: 'module structure', restructure: 'restructure',
+    violation_introduced: 'violation introduced', violation_resolved: 'violation resolved',
+  };
+
+  async function loadDecisions(id) {
+    $('decisions').innerHTML = pending('Detecting decision points and reconstructing their records (this can take a minute)');
+    try {
+      const data = await postJson('/adrs', { analysis_id: id });
+      if (!current || current.analysis_id !== id) return;
+      const warnings = data.warnings || [];
+      const head = warnings.length
+        ? `<div class="notice">${escapeHtml(data.error ? 'Decision records unavailable.' : 'Some records are incomplete:')}<ul>${warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>` : '';
+      $('decisions').innerHTML = head + (data.decisions.length
+        ? data.decisions.map(adrCard).join('')
+        : '<p class="pending">No architectural decision points were detected in this history.</p>');
+    } catch (err) {
+      if (!current || current.analysis_id !== id) return;
+      $('decisions').innerHTML = `<div class="error-box">Couldn't reconstruct decisions: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  function adrCard(a) {
+    const section = (k, v) => v ? `<div class="kv"><span class="k">${k}</span>${escapeHtml(v)}</div>` : '';
+    const evidence = (a.evidence || []).map((e) => `<li>
+        <span>${commitLink(e.sha, e.short)}<br><span class="rel-num">${shortDate(e.date)}</span></span>
+        <span class="msg">${escapeHtml(e.message)}${e.decision_commit ? ' <span class="badge status">decision commit</span>' : ''}
+          ${e.shows ? `<span class="shows">${escapeHtml(e.shows)}</span>` : ''}</span>
+        <span title="time ${e.factors.time} · graph ${e.factors.graph} · text ${e.factors.text}">
+          <span class="rel-num">relevance ${e.relevance}</span>
+          <div class="relbar"><span style="width:${Math.round(Math.min(1, e.relevance) * 100)}%"></span></div>
+        </span>
+      </li>`).join('');
+    const label = (a.confidence_label || 'Low').toLowerCase();
+    return `<article class="adr-card">
+      <div class="adr-head">
+        <h3 class="adr-title">${escapeHtml(a.title)}</h3>
+        <div class="adr-tags">
+          <span class="badge status">${escapeHtml(a.status)}</span>
+          <span class="chip">${escapeHtml(KIND_LABEL[a.kind] || a.kind)}</span>
+          <span>${shortDate(a.date)} · ${commitLink(a.decision_point.sha, a.decision_point.short)}</span>
+        </div>
+      </div>
+      <div class="adr-body">
+        <div class="adr-detected">Detected: ${escapeHtml(a.decision_point.detected)} — commit message: “${escapeHtml(a.decision_point.commit_message)}”</div>
+        ${a.fallback ? '<div class="notice" style="margin:0">No AI synthesis was possible; showing the detected decision and its evidence only.</div>' : ''}
+        ${section('Context', a.context)}
+        ${section('Decision', a.decision)}
+        ${section('Consequences', a.consequences)}
+        ${section('Alternatives visible in the evidence', a.alternatives)}
+        <div class="kv"><span class="k">Evidence · ${(a.evidence || []).length} of ${a.commits_considered + 1} commits considered</span>
+          <ul class="evidence-list">${evidence}</ul></div>
+        ${a.inference ? `<div class="inference kv"><span class="k">Inference</span>${escapeHtml(a.inference)}</div>` : ''}
+        <div class="confidence"><span class="badge ${label}">${escapeHtml(a.confidence_label)} confidence · ${a.confidence}</span>${escapeHtml(a.confidence_reason)}</div>
+        <details class="adr-validation"><summary>Validation details</summary><pre>${escapeHtml(JSON.stringify(a.validation, null, 2))}</pre></details>
+      </div>
+    </article>`;
+  }
+
+  // ---------- documentation ----------
+  async function loadDocumentation(id) {
+    const el = $('documentation');
+    el.innerHTML = pending('Generating documentation');
+    let data;
+    try {
+      data = await postJson('/documentation', { analysis_id: id });
+    } catch (err) {
+      data = { documentation_error: err.message || 'Documentation request failed.' };
+    }
+    if (!current || current.analysis_id !== id) return;
+    if (data.documentation_error != null) {
+      el.innerHTML = `<div class="error-box">Documentation generation failed: ${escapeHtml(data.documentation_error || 'unknown error')}</div>`;
+      return;
+    }
+    const warnings = data.documentation_warnings || [];
+    el.innerHTML = (warnings.length
+      ? `<div class="notice"><strong>Partial AI coverage:</strong><ul>${warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>` : '')
+      + `<div class="markdown-body">${DOMPurify.sanitize(marked.parse(data.documentation || ''))}</div>`;
   }
 
   // ---------- Ask the repo ----------
-  const askToggle = document.getElementById('ask-toggle');
-  const askPanel = document.getElementById('ask-panel');
-  const askClose = document.getElementById('ask-close');
-  const askMessages = document.getElementById('ask-messages');
-  const askSuggestions = document.getElementById('ask-suggestions');
-  const askForm = document.getElementById('ask-form');
-  const askInput = document.getElementById('ask-input');
-  const askSend = document.getElementById('ask-send');
-  const askRepoLabel = document.getElementById('ask-repo-label');
+  const askToggle = $('ask-toggle');
+  const askPanel = $('ask-panel');
+  const askMessages = $('ask-messages');
+  const askSuggestions = $('ask-suggestions');
+  const askInput = $('ask-input');
+  const askSend = $('ask-send');
 
   const SUGGESTED_QUESTIONS = [
     'Give me an overview of how this repository is organized.',
+    'Are there any architecture violations, and how has health changed over time?',
     'Which modules are the most depended-on, and what would be affected if I changed one?',
-    'Are there any architecture violations?',
-    'What is the main entry point and what does it do?',
+    'What were the major architectural decisions in this project, and why were they made?',
+    'Who has worked most on this codebase, and what changed recently?',
   ];
   const HISTORY_TURNS_SENT = 6;
-
   let chatHistory = [];
   let askBusy = false;
 
@@ -656,26 +1147,18 @@
   });
 
   askToggle.addEventListener('click', openAsk);
-  askClose.addEventListener('click', closeAsk);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !askPanel.hidden) closeAsk();
-  });
-  askForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    sendQuestion(askInput.value);
-  });
+  $('ask-close').addEventListener('click', closeAsk);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !askPanel.hidden) closeAsk(); });
+  $('ask-form').addEventListener('submit', (e) => { e.preventDefault(); sendQuestion(askInput.value); });
   askInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendQuestion(askInput.value);
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion(askInput.value); }
   });
 
   function resetChat(repoUrl) {
     chatHistory = [];
     askMessages.querySelectorAll('.ask-turn').forEach((el) => el.remove());
     askSuggestions.hidden = false;
-    askRepoLabel.textContent = repoUrl;
+    $('ask-repo-label').textContent = repoUrl;
     askToggle.hidden = false;
   }
 
@@ -689,45 +1172,35 @@
 
   function closeAsk() {
     askPanel.hidden = true;
-    askToggle.hidden = false;
+    askToggle.hidden = !current;
     askToggle.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('ask-open');
-    askToggle.focus();
+    if (current) askToggle.focus();
   }
 
   async function sendQuestion(raw) {
     const question = raw.trim();
     if (!question || askBusy) return;
-
     askBusy = true;
     askSend.disabled = true;
     askInput.value = '';
     askSuggestions.hidden = true;
 
     appendTurn('ask-msg-user').textContent = question;
-    const pending = appendTurn('ask-pending');
-    pending.textContent = 'Querying the knowledge graph';
-    const history = chatHistory.slice(-HISTORY_TURNS_SENT);
-
+    const waiting = appendTurn('pending active');
+    waiting.textContent = 'Querying the knowledge graph';
     try {
-      const resp = await fetch('/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, history }),
-      });
-      if (!resp.ok) throw new Error(`Request failed (HTTP ${resp.status}).`);
-      const data = await resp.json();
-      pending.remove();
-
+      const data = await postJson('/ask', { question, history: chatHistory.slice(-HISTORY_TURNS_SENT) });
+      waiting.remove();
       if (data.error != null || !data.answer) {
-        showAskError(data.error || 'No answer was returned.');
+        appendTurn('ask-error').textContent = `Couldn't answer: ${data.error || 'No answer was returned.'}`;
       } else {
-        appendAnswer(data.answer, data.evidence || []);
+        appendAnswer(data.answer, data.evidence || [], data.intents || []);
         chatHistory.push({ role: 'user', content: question }, { role: 'assistant', content: data.answer });
       }
     } catch (err) {
-      pending.remove();
-      showAskError(err.message || 'Request failed.');
+      waiting.remove();
+      appendTurn('ask-error').textContent = `Couldn't answer: ${err.message || 'Request failed.'}`;
     } finally {
       askBusy = false;
       askSend.disabled = false;
@@ -743,13 +1216,11 @@
     return el;
   }
 
-  function showAskError(message) {
-    appendTurn('ask-error').textContent = `Couldn't answer: ${message}`;
-  }
-
-  function appendAnswer(answer, evidence) {
+  function appendAnswer(answer, evidence, intents) {
     const el = appendTurn('ask-msg-bot');
-
+    if (intents.length) {
+      el.insertAdjacentHTML('beforeend', `<div class="intent-tags" title="How the question was routed">${intents.map((i) => `<span>${escapeHtml(i)}</span>`).join('')}</div>`);
+    }
     const body = document.createElement('div');
     body.className = 'markdown-body';
     body.innerHTML = DOMPurify.sanitize(marked.parse(answer));
@@ -762,13 +1233,10 @@
       ? `Evidence: ${evidence.length} ${evidence.length === 1 ? 'query' : 'queries'}`
       : 'Evidence: none (answered without querying the repo)';
     details.appendChild(summary);
-
     if (evidence.length) {
       const list = document.createElement('ol');
       evidence.forEach((ev) => {
-        const args = Object.entries(ev.args || {})
-          .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-          .join(', ');
+        const args = Object.entries(ev.args || {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(', ');
         const item = document.createElement('li');
         item.innerHTML = `<code>${escapeHtml(ev.tool)}</code>${args ? ` (${escapeHtml(args)})` : ''} &mdash; ${escapeHtml(ev.summary)}`;
         list.appendChild(item);

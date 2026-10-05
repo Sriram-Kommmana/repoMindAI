@@ -1,12 +1,14 @@
-"""Neo4j connection and write logic for the Phase 1 knowledge graph.
+"""Neo4j connection and write logic for the current-state knowledge graph.
 
-Credentials are read from .env (NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD) —
-never hardcoded, per CLAUDE.md.
+Credentials are read from .env (NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD) and
+never hardcoded.
 """
 import os
 
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
+
+from graph.schema import ensure_schema
 
 load_dotenv()
 
@@ -23,13 +25,14 @@ def load_graph(data: dict) -> None:
     nodes and CONTAINS/CALLS/IMPORTS relationships from `data` (as returned
     by parser.ast_extractor.parse_repo).
 
-    Phase 1 has no temporal/incremental model, so a full wipe-and-reload on
-    every run is the simplest correct behavior.
+    The graph holds one repository at a time, so every analysis wipes and
+    reloads it (history is written afterwards by graph/history_loader.py).
     """
     driver = _get_driver()
     try:
         with driver.session() as session:
-            session.execute_write(lambda tx: tx.run("MATCH (n) DETACH DELETE n"))
+            ensure_schema(session)
+            wipe_graph(session)
             session.execute_write(_write_modules, data["modules"])
             session.execute_write(_write_classes, data["classes"])
             session.execute_write(_write_functions, data["functions"])
@@ -40,6 +43,12 @@ def load_graph(data: dict) -> None:
             session.execute_write(_write_calls, data["calls"])
     finally:
         driver.close()
+
+
+def wipe_graph(session) -> None:
+    # Batched, auto-commit delete: a single-transaction DETACH DELETE of a
+    # large graph can exhaust the database's transaction memory.
+    session.run("MATCH (n) CALL (n) { DETACH DELETE n } IN TRANSACTIONS OF 10000 ROWS").consume()
 
 
 def count_nodes() -> int:

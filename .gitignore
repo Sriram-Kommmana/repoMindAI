@@ -31,3 +31,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# LLM output cache and test/eval scratch
+.cache/
+.pytest_cache/

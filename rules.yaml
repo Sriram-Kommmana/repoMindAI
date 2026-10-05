@@ -1,10 +1,106 @@
+# RepoMind AI architecture rules ("rules as data").
+#
+# layers: which modules belong to which layer. Pattern kinds:
+#   glob: <pattern>  fnmatch against the full path (wins first, for overrides)
+#   file: <pattern>  the file name, e.g. controller.py or *.service.ts
+#   dir:  <pattern>  a folder name; the innermost matching folder wins
+# Matching is case-insensitive. Unmatched modules have no layer, and rules
+# only judge edges between layer-tagged modules.
+#
+# rules: each rule judges one-hop edges from from_layer to to_layer, either
+# function CALLS (edge: calls, the default) or module IMPORTS (edge: imports).
+# allowed: false rules are checked; severity (0-10) weights the health score.
 pattern: layered
+
+layers:
+  controller:
+    - file: controller.py
+    - file: "*_controller.py"
+    - file: "*.controller.ts"
+    - file: "*.controller.js"
+    - dir: controllers
+    - dir: controller
+    - dir: routes
+    - dir: routers
+    - dir: views
+    - dir: handlers
+    - dir: endpoints
+    - dir: entrypoints
+  service:
+    - file: service.py
+    - file: "*_service.py"
+    - file: "*.service.ts"
+    - file: "*.service.js"
+    - dir: services
+    - dir: service
+    - dir: service_layer
+    - dir: usecases
+    - dir: use_cases
+    - dir: application
+  database:
+    - file: database.py
+    - file: "*_repository.py"
+    - file: "*.repository.ts"
+    - file: "*.repository.js"
+    - dir: repositories
+    - dir: repository
+    - dir: dao
+    - dir: db
+    - dir: database
+    - dir: adapters
+    - dir: infrastructure
+  # Domain/ORM models are used from every layer in MVC and Django apps, so
+  # they get a layer for grouping but no rules by default.
+  model:
+    - file: "*.entity.ts"
+    - file: "*.model.js"
+    - dir: models
+    - dir: entities
+    - dir: domain
+
+# Modules matching these get no layer: tests legitimately import every layer.
+ignore:
+  - dir: test
+  - dir: tests
+  - dir: __tests__
+  - dir: spec
+  - dir: e2e
+  - file: "test_*.py"
+  - file: "*_test.py"
+  - file: conftest.py
+  - file: "*.test.*"
+  - file: "*.spec.*"
+
 rules:
   - name: no-controller-to-db
     from_layer: controller
     to_layer: database
     allowed: false
     severity: 3
+  - name: no-controller-imports-db
+    edge: imports
+    from_layer: controller
+    to_layer: database
+    allowed: false
+    severity: 2
+  - name: no-service-imports-controller
+    edge: imports
+    from_layer: service
+    to_layer: controller
+    allowed: false
+    severity: 2
+  - name: no-db-imports-service
+    edge: imports
+    from_layer: database
+    to_layer: service
+    allowed: false
+    severity: 2
+  - name: no-db-imports-controller
+    edge: imports
+    from_layer: database
+    to_layer: controller
+    allowed: false
+    severity: 2
   - name: controller-to-service-allowed
     from_layer: controller
     to_layer: service

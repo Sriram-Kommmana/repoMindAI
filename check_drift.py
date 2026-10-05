@@ -1,10 +1,14 @@
-"""RepoMind AI — Phase 2 CLI entry point: architecture drift checking.
+"""RepoMind AI — CLI entry point: architecture drift checking.
 
-Usage: python check_drift.py
+Usage: python check_drift.py [rules.yaml]
 Assumes the graph has already been loaded via `python main.py <repo_path>`.
 """
-from rules.rule_engine import load_rules, run_rule_engine
-from rules.scoring import compute_health
+import sys
+
+from rules.config import DEFAULT_RULES_PATH, load_rules_config
+from rules.evaluate import format_violation, violation_key
+from rules.rule_engine import count_checks, run_rule_engine
+from rules.scoring import compute_health, compute_health_normalized
 
 
 def _qualified(class_name, name):
@@ -12,18 +16,19 @@ def _qualified(class_name, name):
 
 
 def main():
-    rules = load_rules("rules.yaml")
+    rules = load_rules_config(path=sys.argv[1] if len(sys.argv) > 1 else DEFAULT_RULES_PATH)
     violations, total_applicable_rules = run_rule_engine(rules)
+    violations.sort(key=violation_key)
 
     if not violations:
         print("No violations found.")
     for v in violations:
-        caller = f"{v['caller_module']}::{_qualified(v['caller_class'], v['caller_name'])}"
-        callee = f"{v['callee_module']}::{_qualified(v['callee_class'], v['callee_name'])}"
-        print(f"VIOLATION [{v['rule_name']}] severity={v['severity']}: {caller} -> {callee}")
+        f = format_violation(v)
+        print(f"VIOLATION [{f['rule']}] severity={f['severity']} ({f['edge']}): {f['caller']} -> {f['callee']}")
 
-    health = compute_health(violations, total_applicable_rules)
-    print(f"ArchitectureHealth = {health}")
+    health = compute_health_normalized(violations, count_checks(rules), rules)
+    print(f"ArchitectureHealth = {health if health is not None else 'n/a (nothing to check)'}")
+    print(f"ArchitectureHealth (legacy formula) = {compute_health(violations, total_applicable_rules)}")
 
 
 if __name__ == "__main__":
