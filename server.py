@@ -3,17 +3,19 @@
 Usage: python server.py   (serves on http://localhost:8000)
 
 Thin wrapper only — every deterministic step (clone, parse+load, drift
-check, diagram) calls existing, already-verified pipeline functions; the
-only new logic added on top is the LLM documentation call in
-docs_generator.py, itself grounded in that same deterministic output.
+check, diagram) calls existing, already-verified pipeline functions. The
+only generative pieces are the documentation call (docs_generator.py) and
+repository Q&A (qa_engine.py), both grounded in that same deterministic
+output.
 """
 import shutil
 import tempfile
+from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from analyze_repo import clone_repo, _remove_readonly
 from check_drift import _qualified
@@ -21,6 +23,7 @@ from docs_generator import generate_documentation
 from export_diagram import _get_driver as _diagram_driver, build_mermaid, fetch_imports, fetch_modules
 from graph import loader
 from parser import ast_extractor
+from qa_engine import answer_question, clear_repo_context, set_repo_context
 from rules.rule_engine import load_rules, run_rule_engine
 from rules.scoring import compute_health
 
@@ -29,6 +32,16 @@ app = FastAPI()
 
 class AnalyzeRequest(BaseModel):
     repo_url: str
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=8000)
+
+
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
 
 
 @app.get("/")
@@ -43,7 +56,9 @@ def analyze(req: AnalyzeRequest):
         clone_repo(req.repo_url, temp_dir)
 
         data = ast_extractor.parse_repo(temp_dir)
+        clear_repo_context()
         loader.load_graph(data)
+        set_repo_context(req.repo_url, temp_dir, [m["path"] for m in data["modules"]])
         nodes_loaded = loader.count_nodes()
 
         rules = load_rules("rules.yaml")
@@ -99,6 +114,14 @@ def analyze(req: AnalyzeRequest):
         "documentation_error": documentation_error,
         "documentation_warnings": documentation_warnings,
     }
+
+
+@app.post("/ask")
+def ask(req: AskRequest):
+    try:
+        return answer_question(req.question, [turn.model_dump() for turn in req.history])
+    except Exception as exc:
+        return {"answer": None, "evidence": [], "error": str(exc) or type(exc).__name__}
 
 
 if __name__ == "__main__":

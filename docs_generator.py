@@ -31,6 +31,15 @@ repos (the common demo case) take a single-call fast path equivalent in
 cost to the old design. Every per-call failure (map or reduce) degrades to
 a clearly-marked deterministic fallback rather than failing the whole
 document — see `generate_documentation`'s docstring for the full contract.
+
+Multi-key rotation: Groq's free-tier TPM budget is tracked per account, so
+a single shared key forced map-phase batches to run serialized
+(MAP_MAX_CONCURRENCY=1) to avoid concurrent calls colliding on one budget.
+GROQ_API_KEYS (comma-separated) lets multiple independently-budgeted keys
+be configured; batches are assigned round-robin across them and can then
+run one-call-per-key concurrently without colliding, since each key's rate
+limit is tracked independently by Groq. A single key still works exactly
+as before (falls back to GROQ_API_KEY, concurrency naturally stays at 1).
 """
 import concurrent.futures
 import os
@@ -71,16 +80,18 @@ MAP_MAX_MODULES_PER_BATCH = 10
 # may take however long it takes). Bounds how much of the account's shared
 # per-day request budget one analysis can consume.
 MAX_TOTAL_MAP_CALLS = 40
-# 1, not 2: observed on a real 13-group repo — two concurrent calls can
-# each be individually under the account's ~8,000 TPM ceiling and still
-# collide to blow the shared per-minute budget together, causing more
-# batches to exhaust their retries and fall back to bare structural
-# listings than genuinely necessary. Serializing costs latency (no cap by
-# design — see MAX_TOTAL_MAP_CALLS's own comment) but avoids
-# self-inflicted collisions entirely; the retry/cooldown logic still
-# handles unavoidable contention from other concurrent usage of the
-# account.
-MAP_MAX_CONCURRENCY = 1
+# With ONE shared key, two concurrent calls can each be individually under
+# the account's ~8,000 TPM ceiling and still collide to blow the shared
+# per-minute budget together (observed on a real 13-group repo) — hence
+# running one key fully serialized. With MULTIPLE keys (GROQ_API_KEYS),
+# each key has its own independent TPM budget, so one concurrent call per
+# key never collides with another key's budget. Effective concurrency is
+# computed at runtime as min(number of configured keys, this cap) — a
+# single key naturally still serializes (concurrency 1); more keys allow
+# more true concurrency, up to this ceiling regardless of how many keys
+# accumulate (avoids hammering Groq's per-key concurrent-request limits
+# and keeps behavior predictable).
+MAP_MAX_CONCURRENCY_CAP = 5
 
 # --- Map phase (one call per batch of up to MAP_MAX_MODULES_PER_BATCH modules) ---
 MAP_MAX_CHARS_PER_FILE = 2000
@@ -150,6 +161,24 @@ Everything under "STRUCTURAL EVIDENCE" below was extracted deterministically by 
 
 Output a single well-formed Markdown document with exactly these sections, in this order: ## Overview, ## Architecture & Layers, ## Module-by-Module Breakdown.
 """
+
+
+def _load_api_keys() -> list:
+    """GROQ_API_KEYS is a comma-separated list, one key per Groq account —
+    each carries its own independent rate-limit budget. Falls back to the
+    single GROQ_API_KEY for backward compatibility (existing .env files
+    with just one key keep working unchanged). Raises KeyError (same as
+    before) if neither is set — a catastrophic setup failure."""
+    raw = os.environ.get("GROQ_API_KEYS", "").strip()
+    if raw:
+        keys = [k.strip() for k in raw.split(",") if k.strip()]
+        if keys:
+            return keys
+    return [os.environ["GROQ_API_KEY"]]
+
+
+def _build_clients(keys: list) -> list:
+    return [OpenAI(base_url=GROQ_BASE_URL, api_key=k, max_retries=0) for k in keys]
 
 
 def _qualified(class_name, name):
@@ -415,26 +444,32 @@ def _extract_retry_after(exc_text: str) -> float:
     return RATE_LIMIT_COOLDOWN_SECONDS
 
 
-def _call_batch_with_retry(client, system_instruction: str, user_content: str, max_tokens: int,
-                            cooldown_until: list, lock: threading.Lock) -> str:
+def _call_batch_with_retry(clients: list, key_index: int, system_instruction: str, user_content: str,
+                            max_tokens: int, cooldown_until: list, lock: threading.Lock) -> str:
     """Retries on transient errors (503/overloaded) and rate limits
     (429/rate_limit_exceeded) up to MAX_RETRIES times, EXCLUDING anything
     matching _NON_RETRYABLE_MARKERS (a "too large" 413 shares Groq's
     generic rate_limit_exceeded code with genuine throttling, but retrying
     an identically-oversized payload fails identically every time).
 
-    A genuine rate-limit hit sets a SHARED cooldown (via `cooldown_until`,
-    a 1-element list used as a mutable box, protected by `lock`) so other
-    concurrently-running batches back off too — TPM is an account-wide
-    budget, so one chunk backing off alone while others immediately re-hit
-    the API just relocates the same failure a few seconds later. New
-    submissions and retries alike wait out any active cooldown first.
+    `clients`/`cooldown_until` are parallel lists, one entry per configured
+    API key; `key_index` pins this call (and all its retries) to ONE key
+    for its whole lifetime rather than hopping keys mid-retry — a per-key
+    429 is a transient per-minute window, and waiting it out on the SAME
+    key is simpler and safer than dynamically switching keys, which would
+    also risk masking a genuinely broken/revoked key behind endless
+    hopping. A genuine rate-limit hit sets a cooldown on just THIS key's
+    slot (protected by the shared `lock`) so other concurrent calls
+    sharing this same key back off too, without affecting other keys'
+    independent budgets. New submissions and retries alike wait out any
+    active cooldown on their assigned key first.
     """
+    client = clients[key_index]
     for attempt in range(MAX_RETRIES + 1):
         with lock:
-            remaining = cooldown_until[0] - time.time()
+            remaining = cooldown_until[key_index] - time.time()
         if remaining > 0:
-            print(f"[docs_generator] waiting out cooldown: {remaining:.1f}s", flush=True)
+            print(f"[docs_generator] key[{key_index}]: waiting out cooldown: {remaining:.1f}s", flush=True)
             time.sleep(remaining)
 
         t0 = time.time()
@@ -443,10 +478,10 @@ def _call_batch_with_retry(client, system_instruction: str, user_content: str, m
             text = response.choices[0].message.content if response.choices else None
             if not text:
                 raise ValueError("Groq returned an empty response")
-            print(f"[docs_generator] call ok in {time.time()-t0:.1f}s (attempt {attempt})", flush=True)
+            print(f"[docs_generator] key[{key_index}]: call ok in {time.time()-t0:.1f}s (attempt {attempt})", flush=True)
             return text
         except Exception as exc:
-            print(f"[docs_generator] call FAILED in {time.time()-t0:.1f}s (attempt {attempt}): {type(exc).__name__}: {exc}", flush=True)
+            print(f"[docs_generator] key[{key_index}]: call FAILED in {time.time()-t0:.1f}s (attempt {attempt}): {type(exc).__name__}: {exc}", flush=True)
             exc_text = str(exc).lower()
             is_non_retryable = any(m.lower() in exc_text for m in _NON_RETRYABLE_MARKERS)
             is_rate_limited = (not is_non_retryable) and any(m.lower() in exc_text for m in _RATE_LIMIT_MARKERS)
@@ -457,8 +492,8 @@ def _call_batch_with_retry(client, system_instruction: str, user_content: str, m
                 wait_s = _extract_retry_after(exc_text) + 1.0  # +1s safety margin
                 with lock:
                     # Never shrink an existing cooldown another concurrent
-                    # call already set to something longer.
-                    cooldown_until[0] = max(cooldown_until[0], time.time() + wait_s)
+                    # call on this same key already set to something longer.
+                    cooldown_until[key_index] = max(cooldown_until[key_index], time.time() + wait_s)
             if not is_retryable or attempt == MAX_RETRIES:
                 raise
             if not is_rate_limited:
@@ -469,8 +504,8 @@ def _call_batch_with_retry(client, system_instruction: str, user_content: str, m
 # Map phase
 # --------------------------------------------------------------------------
 
-def _generate_batch_section(client, group_key: str, modules: list, data: dict, repo_path: str,
-                             cooldown_until: list, lock: threading.Lock) -> dict:
+def _generate_batch_section(clients: list, key_index: int, group_key: str, modules: list, data: dict,
+                             repo_path: str, cooldown_until: list, lock: threading.Lock) -> dict:
     """One map call. NEVER raises."""
     module_paths = [m["path"] for m in modules]
     try:
@@ -486,7 +521,7 @@ def _generate_batch_section(client, group_key: str, modules: list, data: dict, r
             _MAP_SYSTEM_INSTRUCTION, label=_group_display_name(group_key),
         )
         markdown = _call_batch_with_retry(
-            client, system_instruction, user_content, MAP_MAX_OUTPUT_TOKENS, cooldown_until, lock
+            clients, key_index, system_instruction, user_content, MAP_MAX_OUTPUT_TOKENS, cooldown_until, lock
         )
         return {"group_key": group_key, "status": "ok", "markdown": markdown, "error": None, "module_paths": module_paths}
     except Exception as exc:
@@ -496,19 +531,24 @@ def _generate_batch_section(client, group_key: str, modules: list, data: dict, r
         }
 
 
-def _run_map_phase(client, kept: list, data: dict, repo_path: str,
-                    cooldown_until: list, lock: threading.Lock) -> list:
-    """Runs all kept batches with MAP_MAX_CONCURRENCY workers, preserving
-    the original deterministic batch order in the returned list regardless
-    of completion order. `with ... as pool:` is safe here (unlike the
-    single-call deadline pool above) — we genuinely want to wait for every
-    submitted future; each one's own hard per-call deadline is already
-    enforced inside _call_with_deadline."""
+def _run_map_phase(clients: list, kept: list, data: dict, repo_path: str,
+                    cooldown_until: list, lock: threading.Lock, max_workers: int) -> list:
+    """Runs all kept batches with `max_workers` concurrent workers,
+    preserving the original deterministic batch order in the returned list
+    regardless of completion order. Each batch is assigned a key
+    round-robin (`i % len(clients)`) by its position in `kept` — with
+    `max_workers <= len(clients)` (guaranteed by how the caller computes
+    it), no two batches running at the same time ever share a key, so
+    concurrent calls never collide on the same account's rate limit.
+    `with ... as pool:` is safe here (unlike the single-call deadline pool
+    above) — we genuinely want to wait for every submitted future; each
+    one's own hard per-call deadline is already enforced inside
+    _call_with_deadline."""
     results = [None] * len(kept)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAP_MAX_CONCURRENCY) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
         future_to_index = {
-            pool.submit(_generate_batch_section, client, b["group_key"], b["modules"], data, repo_path,
-                        cooldown_until, lock): i
+            pool.submit(_generate_batch_section, clients, i % len(clients), b["group_key"], b["modules"], data,
+                        repo_path, cooldown_until, lock): i
             for i, b in enumerate(kept)
         }
         for future in concurrent.futures.as_completed(future_to_index):
@@ -557,11 +597,12 @@ def _build_reduce_input(batch_results: list, structural_only: "OrderedDict[str, 
     return "\n".join(lines)
 
 
-def _reduce(client, reduce_input: str, cooldown_until: list, lock: threading.Lock) -> dict:
+def _reduce(clients: list, key_index: int, reduce_input: str, cooldown_until: list, lock: threading.Lock) -> dict:
     """NEVER raises."""
     try:
         markdown = _call_batch_with_retry(
-            client, _REDUCE_SYSTEM_INSTRUCTION, reduce_input, REDUCE_MAX_OUTPUT_TOKENS, cooldown_until, lock
+            clients, key_index, _REDUCE_SYSTEM_INSTRUCTION, reduce_input, REDUCE_MAX_OUTPUT_TOKENS,
+            cooldown_until, lock,
         )
         return {"status": "ok", "markdown": markdown, "error": None}
     except Exception as exc:
@@ -618,7 +659,7 @@ def _assemble_document(reduce_markdown: str, batch_results: list, structural_onl
 # Fast path (small repos — single call, no map/reduce)
 # --------------------------------------------------------------------------
 
-def _generate_single_call(client, modules: list, data: dict, repo_path: str) -> str:
+def _generate_single_call(clients: list, modules: list, data: dict, repo_path: str) -> str:
     structural_summary = _build_group_structural_summary(
         modules, data, SINGLE_CALL_MAX_STRUCTURAL_CHARS, SINGLE_CALL_MAX_CALL_EDGES
     )
@@ -629,10 +670,10 @@ def _generate_single_call(client, modules: list, data: dict, repo_path: str) -> 
     system_instruction, user_content = _build_prompt(
         structural_summary, source_excerpts, SINGLE_CALL_MAX_PROMPT_CHARS, _SINGLE_CALL_SYSTEM_INSTRUCTION
     )
-    cooldown_until = [0.0]
+    cooldown_until = [0.0] * len(clients)
     lock = threading.Lock()
     return _call_batch_with_retry(
-        client, system_instruction, user_content, SINGLE_CALL_MAX_OUTPUT_TOKENS, cooldown_until, lock
+        clients, 0, system_instruction, user_content, SINGLE_CALL_MAX_OUTPUT_TOKENS, cooldown_until, lock
     )
 
 
@@ -652,13 +693,13 @@ def generate_documentation(repo_path: str, data: dict, violations: list, health_
         }
 
     Raises ONLY for setup-time failures where no output is possible at all
-    (missing GROQ_API_KEY). Every per-batch or reduce-call failure degrades
-    into `warnings` instead of propagating — "some documentation" beats "no
-    documentation field" for exactly the completeness bug this module was
-    redesigned to fix.
+    (missing GROQ_API_KEY / GROQ_API_KEYS). Every per-batch or reduce-call
+    failure degrades into `warnings` instead of propagating — "some
+    documentation" beats "no documentation field" for exactly the
+    completeness bug this module was redesigned to fix.
     """
-    api_key = os.environ["GROQ_API_KEY"]
-    client = OpenAI(base_url=GROQ_BASE_URL, api_key=api_key, max_retries=0)
+    keys = _load_api_keys()
+    clients = _build_clients(keys)
 
     start = time.time()
     groups = group_modules(data["modules"])
@@ -668,7 +709,7 @@ def generate_documentation(repo_path: str, data: dict, violations: list, health_
     if len(kept) <= 1 and not structural_only:
         modules = kept[0]["modules"] if kept else []
         try:
-            body_markdown = _generate_single_call(client, modules, data, repo_path)
+            body_markdown = _generate_single_call(clients, modules, data, repo_path)
         except Exception as exc:
             body_markdown = (
                 f"## Overview\n\nThis repository contains {len(data['modules'])} files. "
@@ -691,13 +732,15 @@ def generate_documentation(repo_path: str, data: dict, violations: list, health_
                 "batches_kept": 1, "batches_ok": 0 if warnings else 1, "batches_failed": 1 if warnings else 0,
                 "groups_structural_only": 0, "reduce_ok": None,
                 "elapsed_seconds": round(time.time() - start, 2),
+                "api_keys_configured": len(clients),
             },
         }
 
-    cooldown_until = [0.0]
+    cooldown_until = [0.0] * len(clients)
     lock = threading.Lock()
+    map_concurrency = min(len(clients), MAP_MAX_CONCURRENCY_CAP)
 
-    batch_results = _run_map_phase(client, kept, data, repo_path, cooldown_until, lock)
+    batch_results = _run_map_phase(clients, kept, data, repo_path, cooldown_until, lock, map_concurrency)
 
     batches_failed = [r for r in batch_results if r["status"] == "error"]
     if batches_failed:
@@ -715,7 +758,11 @@ def generate_documentation(repo_path: str, data: dict, violations: list, health_
         )
 
     reduce_input = _build_reduce_input(batch_results, structural_only, groups, data, health_score)
-    reduce_result = _reduce(client, reduce_input, cooldown_until, lock)
+    # Continue the same round-robin the map phase used, rather than always
+    # reusing key 0 — spreads the reduce call's load too instead of piling
+    # it onto whichever key happened to run first.
+    reduce_key_index = len(kept) % len(clients)
+    reduce_result = _reduce(clients, reduce_key_index, reduce_input, cooldown_until, lock)
     if reduce_result["status"] == "ok":
         reduce_markdown = reduce_result["markdown"]
         reduce_ok = True
@@ -739,5 +786,6 @@ def generate_documentation(repo_path: str, data: dict, violations: list, health_
             "batches_kept": len(kept), "batches_ok": len(batch_results) - len(batches_failed),
             "batches_failed": len(batches_failed), "groups_structural_only": len(structural_only),
             "reduce_ok": reduce_ok, "elapsed_seconds": round(time.time() - start, 2),
+            "api_keys_configured": len(clients), "map_concurrency": map_concurrency,
         },
     }

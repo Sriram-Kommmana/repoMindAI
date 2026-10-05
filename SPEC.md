@@ -1266,3 +1266,40 @@ single batch now succeeded within its retry budget (`documentation_warnings: []`
 and a full manual read of the resulting document found no truncated
 sentences anywhere, confirming both fixes held under real contention, not
 just in a quiet account state.
+
+### Multi-key rotation (reliability enhancement)
+
+Groq's free-tier TPM budget is tracked per account, which is why the
+tuning fix above had to serialize map calls onto one key
+(`MAP_MAX_CONCURRENCY=1`) — any concurrency on a single shared budget
+risked self-inflicted collisions. `GROQ_API_KEYS` (comma-separated, added
+to `.env`) lets multiple independently-budgeted keys be configured;
+`_load_api_keys`/`_build_clients` (new in `docs_generator.py`) build one
+OpenAI client per key, falling back to the single `GROQ_API_KEY` for
+backward compatibility if only one key is set.
+
+Each map batch is assigned a key round-robin by its position in the batch
+plan (`i % len(clients)`), and is pinned to that same key for its entire
+retry lifetime — a per-key 429 is a transient per-minute window, and
+waiting it out on the same key is simpler and safer than hopping keys
+mid-retry, which would also risk masking a genuinely broken/revoked key
+behind endless hopping. Effective map concurrency is computed at runtime
+as `min(number of configured keys, MAP_MAX_CONCURRENCY_CAP=5)` — with
+`max_workers <= len(clients)` guaranteed by construction, no two batches
+running concurrently ever share a key, so concurrent calls never collide
+on the same account's rate limit. The reduce call continues the same
+round-robin (`len(kept) % len(clients)`) rather than always reusing key 0,
+spreading its load too. The rate-limit cooldown itself also became
+per-key (`cooldown_until` is now a list, one slot per key, instead of a
+single shared value) so one key's throttling no longer blocks calls
+scheduled on a different, unaffected key.
+
+**Verification:** an offline test (mocked `_call_with_deadline`, no
+network) with 3 synthetic keys and 7 single-module batches confirmed
+correct round-robin assignment (A, B, C, A, B, C, A) and the reduce call
+correctly landing on the next key in sequence (B); a single-key fallback
+test confirmed `GROQ_API_KEY`-only `.env` files keep working unchanged.
+A live end-to-end run against the project's own `test_repo` fixture (6
+files, 4 groups) with 2 real Groq keys completed in 5.6s with both keys
+genuinely used across the 4 map calls + 1 reduce call (`key[1], key[0],
+key[0], key[1], key[0]`), zero warnings, zero failed batches.

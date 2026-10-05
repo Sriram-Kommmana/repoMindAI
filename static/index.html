@@ -254,6 +254,177 @@
     padding: 0.2rem 0 0.2rem 1rem;
     color: var(--text-dim);
   }
+
+  [hidden] { display: none !important; }
+
+  button:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--text);
+    outline-offset: 3px;
+  }
+
+  /* ---------- Ask the repo (chat drawer) ---------- */
+  .ask-toggle {
+    position: fixed;
+    right: 1.25rem;
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+  }
+
+  .ask-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(460px, 100vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    border-left: 3px solid var(--border);
+    z-index: 50;
+  }
+
+  @media (min-width: 1100px) {
+    body.ask-open { margin-right: 480px; margin-left: auto; }
+  }
+
+  .ask-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1.1rem 1rem;
+    background: var(--surface);
+    border-bottom: 3px solid var(--border);
+  }
+  .ask-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ask-sub {
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    word-break: break-all;
+  }
+  .ask-close {
+    padding: 0.3rem 0.75rem;
+    font-size: 1rem;
+    box-shadow: 3px 3px 0 0 var(--border);
+  }
+
+  .ask-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .ask-intro {
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin: 0;
+  }
+  .ask-suggestions { display: flex; flex-direction: column; gap: 0.55rem; }
+  .ask-chip {
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 0.78rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--surface);
+    color: var(--text);
+    border: 2px solid var(--border);
+    box-shadow: 3px 3px 0 0 var(--border);
+  }
+
+  .ask-msg-user {
+    align-self: flex-end;
+    max-width: 85%;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.84rem;
+    background: var(--invert-bg);
+    color: var(--invert-text);
+    border: 2px solid var(--border);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .ask-msg-bot {
+    padding: 0.85rem 0.95rem;
+    background: var(--surface);
+    border: 2px solid var(--border);
+  }
+  .ask-msg-bot .markdown-body { font-size: 0.84rem; line-height: 1.6; word-break: break-word; }
+  .ask-msg-bot .markdown-body table { display: block; overflow-x: auto; }
+  .ask-msg-bot .markdown-body :last-child { margin-bottom: 0; }
+
+  .ask-evidence {
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 2px dashed var(--text-dim);
+    font-size: 0.74rem;
+    color: var(--text-dim);
+  }
+  .ask-evidence summary {
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  .ask-evidence ol { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+  .ask-evidence li { margin-bottom: 0.4rem; word-break: break-word; line-height: 1.5; }
+  .ask-evidence code { color: var(--text); }
+
+  .ask-pending {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    border: 2px dashed var(--text-dim);
+  }
+  .ask-pending::after { content: '...'; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ask-pending::after { animation: ask-dots 1.2s steps(4, end) infinite; content: ''; }
+    @keyframes ask-dots {
+      0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; }
+    }
+  }
+  .ask-error {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: var(--text);
+    color: var(--invert-text);
+    border: 2px solid var(--border);
+    word-break: break-word;
+  }
+
+  .ask-form {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.9rem 1.1rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    border-top: 3px solid var(--border);
+  }
+  #ask-input {
+    flex: 1;
+    resize: none;
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.7rem;
+    background: var(--bg);
+    color: var(--text);
+    border: 3px solid var(--border);
+    border-radius: 0;
+  }
+  #ask-input::placeholder { color: var(--text-dim); }
+  #ask-input:focus { background: var(--surface-2); }
+  .ask-form button { padding: 0.6rem 1rem; box-shadow: 3px 3px 0 0 var(--border); }
 </style>
 </head>
 <body>
@@ -291,12 +462,32 @@
     </section>
 
     <section>
-      <h2>AI-Generated Documentation</h2>
+      <h2>Documentation</h2>
       <div id="documentation-error"></div>
       <div id="documentation-warnings"></div>
       <div id="documentation-content" class="markdown-body"></div>
     </section>
   </div>
+
+  <button id="ask-toggle" class="ask-toggle" type="button" aria-controls="ask-panel" aria-expanded="false" hidden>Ask the repo</button>
+
+  <aside id="ask-panel" class="ask-panel" aria-label="Ask the repository" hidden>
+    <div class="ask-header">
+      <div>
+        <div class="ask-title">Ask the repo</div>
+        <div class="ask-sub" id="ask-repo-label"></div>
+      </div>
+      <button id="ask-close" class="ask-close" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div id="ask-messages" class="ask-messages" aria-live="polite">
+      <p class="ask-intro">Answers come from the knowledge graph, the architecture rule engine and the repo's source. Each answer lists the exact queries it used.</p>
+      <div id="ask-suggestions" class="ask-suggestions"></div>
+    </div>
+    <form id="ask-form" class="ask-form">
+      <textarea id="ask-input" rows="2" maxlength="2000" placeholder="Ask about modules, dependencies, functions&hellip;" aria-label="Your question"></textarea>
+      <button id="ask-send" type="submit">Send</button>
+    </form>
+  </aside>
 
 <script>
   mermaid.initialize({
@@ -336,6 +527,8 @@
     errorEl.style.display = 'none';
     resultsEl.style.display = 'none';
     loadingEl.style.display = 'block';
+    if (!askPanel.hidden) closeAsk();
+    askToggle.hidden = true;
 
     try {
       const resp = await fetch('/analyze', {
@@ -350,6 +543,7 @@
 
       const data = await resp.json();
       await renderResults(data);
+      resetChat(repoUrl);
     } catch (err) {
       errorEl.textContent = err.message || 'Analysis failed.';
       errorEl.style.display = 'block';
@@ -428,6 +622,161 @@
     const div = document.createElement('div');
     div.textContent = s;
     return div.innerHTML;
+  }
+
+  // ---------- Ask the repo ----------
+  const askToggle = document.getElementById('ask-toggle');
+  const askPanel = document.getElementById('ask-panel');
+  const askClose = document.getElementById('ask-close');
+  const askMessages = document.getElementById('ask-messages');
+  const askSuggestions = document.getElementById('ask-suggestions');
+  const askForm = document.getElementById('ask-form');
+  const askInput = document.getElementById('ask-input');
+  const askSend = document.getElementById('ask-send');
+  const askRepoLabel = document.getElementById('ask-repo-label');
+
+  const SUGGESTED_QUESTIONS = [
+    'Give me an overview of how this repository is organized.',
+    'Which modules are the most depended-on, and what would be affected if I changed one?',
+    'Are there any architecture violations?',
+    'What is the main entry point and what does it do?',
+  ];
+  const HISTORY_TURNS_SENT = 6;
+
+  let chatHistory = [];
+  let askBusy = false;
+
+  SUGGESTED_QUESTIONS.forEach((text) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'ask-chip';
+    chip.textContent = text;
+    chip.addEventListener('click', () => sendQuestion(text));
+    askSuggestions.appendChild(chip);
+  });
+
+  askToggle.addEventListener('click', openAsk);
+  askClose.addEventListener('click', closeAsk);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !askPanel.hidden) closeAsk();
+  });
+  askForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendQuestion(askInput.value);
+  });
+  askInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendQuestion(askInput.value);
+    }
+  });
+
+  function resetChat(repoUrl) {
+    chatHistory = [];
+    askMessages.querySelectorAll('.ask-turn').forEach((el) => el.remove());
+    askSuggestions.hidden = false;
+    askRepoLabel.textContent = repoUrl;
+    askToggle.hidden = false;
+  }
+
+  function openAsk() {
+    askPanel.hidden = false;
+    askToggle.hidden = true;
+    askToggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('ask-open');
+    askInput.focus();
+  }
+
+  function closeAsk() {
+    askPanel.hidden = true;
+    askToggle.hidden = false;
+    askToggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('ask-open');
+    askToggle.focus();
+  }
+
+  async function sendQuestion(raw) {
+    const question = raw.trim();
+    if (!question || askBusy) return;
+
+    askBusy = true;
+    askSend.disabled = true;
+    askInput.value = '';
+    askSuggestions.hidden = true;
+
+    appendTurn('ask-msg-user').textContent = question;
+    const pending = appendTurn('ask-pending');
+    pending.textContent = 'Querying the knowledge graph';
+    const history = chatHistory.slice(-HISTORY_TURNS_SENT);
+
+    try {
+      const resp = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, history }),
+      });
+      if (!resp.ok) throw new Error(`Request failed (HTTP ${resp.status}).`);
+      const data = await resp.json();
+      pending.remove();
+
+      if (data.error != null || !data.answer) {
+        showAskError(data.error || 'No answer was returned.');
+      } else {
+        appendAnswer(data.answer, data.evidence || []);
+        chatHistory.push({ role: 'user', content: question }, { role: 'assistant', content: data.answer });
+      }
+    } catch (err) {
+      pending.remove();
+      showAskError(err.message || 'Request failed.');
+    } finally {
+      askBusy = false;
+      askSend.disabled = false;
+      askInput.focus();
+    }
+  }
+
+  function appendTurn(className) {
+    const el = document.createElement('div');
+    el.className = `ask-turn ${className}`;
+    askMessages.appendChild(el);
+    askMessages.scrollTop = askMessages.scrollHeight;
+    return el;
+  }
+
+  function showAskError(message) {
+    appendTurn('ask-error').textContent = `Couldn't answer: ${message}`;
+  }
+
+  function appendAnswer(answer, evidence) {
+    const el = appendTurn('ask-msg-bot');
+
+    const body = document.createElement('div');
+    body.className = 'markdown-body';
+    body.innerHTML = DOMPurify.sanitize(marked.parse(answer));
+    el.appendChild(body);
+
+    const details = document.createElement('details');
+    details.className = 'ask-evidence';
+    const summary = document.createElement('summary');
+    summary.textContent = evidence.length
+      ? `Evidence: ${evidence.length} ${evidence.length === 1 ? 'query' : 'queries'}`
+      : 'Evidence: none (answered without querying the repo)';
+    details.appendChild(summary);
+
+    if (evidence.length) {
+      const list = document.createElement('ol');
+      evidence.forEach((ev) => {
+        const args = Object.entries(ev.args || {})
+          .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+          .join(', ');
+        const item = document.createElement('li');
+        item.innerHTML = `<code>${escapeHtml(ev.tool)}</code>${args ? ` (${escapeHtml(args)})` : ''} &mdash; ${escapeHtml(ev.summary)}`;
+        list.appendChild(item);
+      });
+      details.appendChild(list);
+    }
+    el.appendChild(details);
+    el.scrollIntoView({ block: 'start' });
   }
 </script>
 </body>
